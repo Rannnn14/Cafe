@@ -126,7 +126,7 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Image source={require('@/assets/images/coffee-header.jpg')} style={styles.headerImage} />
+        <Image source={require('@/assets/images/ini.png')} style={styles.headerImage} />
         <ThemedText type="title" style={styles.headerText}>
           Welcome to Cozy Coffee ☕
         </ThemedText>
