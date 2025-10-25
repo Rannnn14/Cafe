@@ -1,121 +1,156 @@
-import React from 'react';
-import { View, StyleSheet, Image, TouchableOpacity, ScrollView } from 'react-native';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
+import { router } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function ProfilScreen() {
-  const handleEditProfile = () => {
-    alert('Edit Profil clicked!');
+  const [name, setName] = useState("Faqih Firansyah");
+  const [email, setEmail] = useState("faqih@example.com");
+  const [bio, setBio] = useState("Pecinta kopi dan suasana santai ☕");
+
+  const loadProfile = async () => {
+    try {
+      const savedName = await AsyncStorage.getItem("user_name");
+      const savedEmail = await AsyncStorage.getItem("user_email");
+      const savedBio = await AsyncStorage.getItem("user_bio");
+
+      if (savedName) setName(savedName);
+      if (savedEmail) setEmail(savedEmail);
+      if (savedBio) setBio(savedBio);
+    } catch (err) {
+      console.log("Error loading profile:", err);
+    }
   };
 
-  const handleLogout = () => {
-    alert('Logout clicked!');
-  };
+  // Jalankan sekali saat mount
+  useEffect(() => {
+    loadProfile();
+  }, []);
 
-  const handleMenuClick = (menu: string) => {
-    alert(`${menu} clicked!`);
+  // Juga jalankan tiap kali layar difokuskan
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [])
+  );
+
+  const navigateTo = (path: string) => {
+    router.push(path as any);
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Header Profil */}
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
         <View style={styles.header}>
-          <Image
-            source={require('@/assets/images/avatar.png')}
-            style={styles.avatar}
-          />
-          <ThemedText style={styles.name}>Faqih Firansyah</ThemedText>
-          <ThemedText style={styles.email}>faqih@example.com</ThemedText>
+          <View style={styles.avatarContainer}>
+            <Image
+              source={require("@/assets/images/avatar.png")}
+              style={styles.avatar}
+            />
+          </View>
 
-          <TouchableOpacity style={styles.editBtn} onPress={handleEditProfile}>
-            <ThemedText style={styles.editBtnText}>Edit Profil</ThemedText>
-          </TouchableOpacity>
+          <Text style={styles.name}>{name}</Text>
+          <Text style={styles.email}>{email}</Text>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <ThemedText style={styles.logoutBtnText}>Logout</ThemedText>
+          {/* tampilkan bio jika ada */}
+          {bio ? <Text style={styles.bio}>{bio}</Text> : null}
+
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={() => router.push("../editProfil")}
+          >
+            <Text style={styles.editText}>Edit Profil</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Menu Profil */}
-        <View style={styles.menuContainer}>
-          <TouchableOpacity style={styles.menuItem} onPress={() => handleMenuClick('Favorit')}>
-            <ThemedText style={styles.menuText}>❤️ Favorit</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => handleMenuClick('Keranjang')}>
-            <ThemedText style={styles.menuText}>🛒 Keranjang</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => handleMenuClick('Pengaturan')}>
-            <ThemedText style={styles.menuText}>⚙️ Pengaturan</ThemedText>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigateTo("/favorites")}
+        >
+          <Text style={styles.menuText}>❤️ Favorit</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigateTo("/keranjang")}
+        >
+          <Text style={styles.menuText}>🛒 Keranjang</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.menuItem}
+          onPress={() => navigateTo("/pengaturan")}
+        >
+          <Text style={styles.menuText}>⚙️ Pengaturan</Text>
+        </TouchableOpacity>
       </ScrollView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f2ec',
-    padding: 16,
+    backgroundColor: "#F5EDE3",
   },
   header: {
-    alignItems: 'center',
-    marginBottom: 30,
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  avatarContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: "hidden",
+    marginBottom: 10,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 12,
+    width: "100%",
+    height: "100%",
   },
   name: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#3B302A",
   },
   email: {
     fontSize: 14,
-    color: '#555',
-    marginBottom: 12,
+    color: "#7D6B5D",
+  },
+  bio: {
+    fontSize: 13,
+    color: "#5C4B44",
+    marginTop: 5,
+    textAlign: "center",
+    paddingHorizontal: 20,
   },
   editBtn: {
-    backgroundColor: '#4b2e05',
-    paddingVertical: 6,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 8,
+    backgroundColor: "#300f00ff",
+    paddingVertical: 8,
+    paddingHorizontal: 25,
+    borderRadius: 10,
+    marginTop: 10,
+
   },
-  editBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  logoutBtn: {
-    backgroundColor: '#e63946',
-    paddingVertical: 6,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  logoutBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  menuContainer: {
-    borderTopWidth: 1,
-    borderTopColor: '#ccc',
+  editText: {
+    color: "white",
+    fontWeight: "bold",
   },
   menuItem: {
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    backgroundColor: "white",
+    marginHorizontal: 20,
+    marginVertical: 6,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
   },
   menuText: {
     fontSize: 16,
-    color: '#000',
-    fontWeight: '600',
+    color: "#3B302A",
   },
 });

@@ -2,9 +2,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Dimensions, FlatList, Image, StyleSheet, View } from 'react-native';
-
+import { Dimensions, FlatList, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 const COFFEE_DATA = [
   { id: '1', name: 'Espresso', price: '25K', image: require('@/assets/images/espresso.jpg') },
@@ -24,20 +24,19 @@ const cardSize = (screenWidth - 80) / 4;
 export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState<string[]>([]);
 
-useFocusEffect(
-  useCallback(() => {
-    const loadFavorites = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('favorites');
-        if (stored) setFavorites(JSON.parse(stored));
-      } catch (err) {
-        console.log('Error loading favorites:', err);
-      }
-    };
-    loadFavorites();
-  }, [])
-);
-
+  useFocusEffect(
+    useCallback(() => {
+      const loadFavorites = async () => {
+        try {
+          const stored = await AsyncStorage.getItem('favorites');
+          if (stored) setFavorites(JSON.parse(stored));
+        } catch (err) {
+          console.log('Error loading favorites:', err);
+        }
+      };
+      loadFavorites();
+    }, [])
+  );
 
   const favoriteItems = COFFEE_DATA.filter(item => favorites.includes(item.id));
 
@@ -51,9 +50,12 @@ useFocusEffect(
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>Your Favorites ❤️</ThemedText>
+      <ThemedText type="title" style={styles.title}>My Favorites ❤️</ThemedText>
+
       {favoriteItems.length === 0 ? (
-        <ThemedText style={{ textAlign: 'center', marginTop: 50 }}>No favorite coffee yet.</ThemedText>
+        <ThemedText style={{ textAlign: 'center', marginTop: 50 }}>
+          No favorite coffee yet.
+        </ThemedText>
       ) : (
         <FlatList
           data={favoriteItems}
@@ -61,9 +63,20 @@ useFocusEffect(
           keyExtractor={(item) => item.id}
           numColumns={4}
           columnWrapperStyle={styles.row}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
         />
       )}
+
+      {/* Tombol di bagian bawah tengah */}
+      <View style={styles.footerButtons}>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+          <ThemedText style={styles.buttonText}>Kembali</ThemedText>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.addButton}>
+          <ThemedText style={styles.buttonText}>Tambah</ThemedText>
+        </TouchableOpacity>
+      </View>
     </ThemedView>
   );
 }
@@ -112,5 +125,32 @@ const styles = StyleSheet.create({
     color: '#9c7b56',
     fontSize: 11,
     fontWeight: '500',
+  },
+  footerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 20,
+    marginTop: 20,
+    marginBottom: 30,
+  },
+  backButton: {
+    backgroundColor: '#300f00ff',
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 10,
+    elevation: 3,
+  },
+  addButton: {
+    backgroundColor: '#300f00ff',
+    paddingVertical: 10,
+    paddingHorizontal: 25,
+    borderRadius: 10,
+    elevation: 3,
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

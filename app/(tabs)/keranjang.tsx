@@ -3,6 +3,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Image,
@@ -16,7 +17,7 @@ import {
 interface CartItem {
   id: string;
   name: string;
-  price: string; 
+  price: string;
   image: any;
   quantity: number;
   checked?: boolean;
@@ -26,7 +27,7 @@ export default function KeranjangScreen() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [total, setTotal] = useState<number>(0);
 
-  /**  Load data keranjang */
+  /** Load data keranjang */
   useFocusEffect(
     useCallback(() => {
       const loadCart = async () => {
@@ -47,7 +48,7 @@ export default function KeranjangScreen() {
     }, [])
   );
 
-  /**  Hitung total berdasarkan item yang dicentang */
+  /** Hitung total berdasarkan item yang dicentang */
   useEffect(() => {
     const newTotal = cart.reduce((sum, item) => {
       if (!item.checked) return sum;
@@ -57,13 +58,13 @@ export default function KeranjangScreen() {
     setTotal(newTotal);
   }, [cart]);
 
-  /**  Simpan ke AsyncStorage */
+  /** Simpan ke AsyncStorage */
   const saveCart = async (newCart: CartItem[]) => {
     setCart(newCart);
     await AsyncStorage.setItem('cart', JSON.stringify(newCart));
   };
 
-  /**  Aksi + dan - */
+  /** Aksi + dan - */
   const increase = (id: string) => {
     saveCart(
       cart.map(item =>
@@ -80,13 +81,13 @@ export default function KeranjangScreen() {
     );
   };
 
-  /**  Hapus item */
+  /** Hapus item */
   const removeItem = async (id: string) => {
     const newCart = cart.filter(item => item.id !== id);
     await saveCart(newCart);
   };
 
-  /**  Toggle checkbox */
+  /** Toggle checkbox */
   const toggleCheck = (id: string) => {
     const updated = cart.map(item =>
       item.id === id ? { ...item, checked: !item.checked } : item
@@ -96,6 +97,14 @@ export default function KeranjangScreen() {
 
   return (
     <ThemedView style={styles.container}>
+      {/* HEADER */}
+      <View style={styles.header}>
+        <ThemedText style={styles.title}>MY CART</ThemedText>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false}>
         {cart.length === 0 ? (
           <ThemedText style={styles.emptyText}>Keranjang Kosong</ThemedText>
@@ -144,7 +153,7 @@ export default function KeranjangScreen() {
           })
         )}
 
-        {/*  Total & Checkout */}
+        {/* Total & Checkout */}
         {cart.length > 0 && (
           <>
             <View style={styles.totalRow}>
@@ -155,10 +164,7 @@ export default function KeranjangScreen() {
             </View>
 
             <TouchableOpacity
-              style={[
-                styles.checkoutButton,
-                { opacity: total === 0 ? 0.5 : 1 },
-              ]}
+              style={[styles.checkoutButton, { opacity: total === 0 ? 0.5 : 1 }]}
               disabled={total === 0}
               onPress={() => console.log('Checkout:', cart.filter(c => c.checked))}
             >
@@ -173,6 +179,28 @@ export default function KeranjangScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#f6f2ec' },
+
+  /** HEADER */
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#3e2723',
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 0,
+    backgroundColor: '#4b2e05',
+    padding: 2,
+    borderRadius: 10,
+  },
+
   card: {
     flexDirection: 'row',
     alignItems: 'center',
