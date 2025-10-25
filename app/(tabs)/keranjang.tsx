@@ -11,6 +11,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback } from 'react';
+
 
 interface CartItem {
   id: string;
@@ -38,14 +41,20 @@ export default function KeranjangScreen() {
   }, []);
 
   // Update total whenever cart changes
-  useEffect(() => {
-    let sum = 0;
-    cart.forEach(item => {
-      const priceNumber = parseInt(item.price.replace('K', '')) * 1000;
-      sum += priceNumber * item.quantity;
-    });
-    setTotal(sum);
-  }, [cart]);
+useFocusEffect(
+  useCallback(() => {
+    const loadCart = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('cart');
+        if (stored) setCart(JSON.parse(stored));
+      } catch (err) {
+        console.log('Error loading cart:', err);
+      }
+    };
+    loadCart();
+  }, [])
+);
+
 
   const saveCart = async (newCart: CartItem[]) => {
     setCart(newCart);

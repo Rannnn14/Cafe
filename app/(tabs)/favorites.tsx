@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { View, FlatList, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
+import { Dimensions, FlatList, Image, StyleSheet, View } from 'react-native';
+
 
 const COFFEE_DATA = [
   { id: '1', name: 'Espresso', price: '25K', image: require('@/assets/images/espresso.jpg') },
@@ -22,7 +24,8 @@ const cardSize = (screenWidth - 80) / 4;
 export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState<string[]>([]);
 
-  useEffect(() => {
+useFocusEffect(
+  useCallback(() => {
     const loadFavorites = async () => {
       try {
         const stored = await AsyncStorage.getItem('favorites');
@@ -32,7 +35,9 @@ export default function FavoritesScreen() {
       }
     };
     loadFavorites();
-  }, []);
+  }, [])
+);
+
 
   const favoriteItems = COFFEE_DATA.filter(item => favorites.includes(item.id));
 
