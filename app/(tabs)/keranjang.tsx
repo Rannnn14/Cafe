@@ -5,10 +5,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { styles } from "../styles/cart.styles";
 import {
   Alert, Image,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View
@@ -24,10 +24,11 @@ interface CartItem {
 }
 
 export default function KeranjangScreen() {
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [total, setTotal] = useState<number>(0);
+  const [cart, setCart] = useState<CartItem[]>([]); //Menyimpan daftar item di keranjang.
+  const [total, setTotal] = useState<number>(0); //Menyimpan jumlah harga dari item yang dicentang.
 
   /** Load data keranjang */
+  // Saat halaman keranjang dibuka, data produk diambil dari AsyncStorage (penyimpanan lokal).
   useFocusEffect(
     useCallback(() => {
       const loadCart = async () => {
@@ -196,81 +197,3 @@ export default function KeranjangScreen() {
     </ThemedView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f6f2ec' },
-
-  /** HEADER */
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#3e2723',
-  },
-  backBtn: {
-    position: 'absolute',
-    left: 0,
-    backgroundColor: '#4b2e05',
-    padding: 2,
-    borderRadius: 10,
-  },
-
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  checkbox: { marginRight: 8 },
-  image: { width: 55, height: 55, borderRadius: 10, marginRight: 10 },
-  name: { fontWeight: '700', fontSize: 14, color: '#000' },
-  subtotalText: { fontWeight: '600', fontSize: 13, color: '#000' },
-  quantityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 8,
-  },
-  btn: {
-    backgroundColor: '#4b2e05',
-    borderRadius: 8,
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  qty: { fontWeight: '600', fontSize: 14, color: '#000' },
-  removeText: { color: '#e63946', fontWeight: '600', fontSize: 13, marginLeft: 10 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between' },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#d1c7b8',
-  },
-  totalLabel: { fontWeight: '700', fontSize: 16, color: '#3e2723' },
-  totalValue: { fontWeight: '800', fontSize: 16, color: '#3e2723' },
-  checkoutButton: {
-    backgroundColor: '#4b2e05',
-    borderRadius: 12,
-    paddingVertical: 14,
-    marginTop: 20,
-  },
-  checkoutText: { color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' },
-  emptyText: { textAlign: 'center', marginTop: 60, fontSize: 16, color: '#3e2723' },
-});
