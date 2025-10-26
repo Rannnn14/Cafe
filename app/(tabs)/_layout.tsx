@@ -3,14 +3,17 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons'; // ✅ Tambahkan Ionicons
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const [cartCount, setCartCount] = useState<number>(0);
+  const router = useRouter();
 
-  // Ambil jumlah item keranjang dari AsyncStorage
+  // 🔁 Ambil jumlah item keranjang dari AsyncStorage
   useEffect(() => {
     const loadCart = async () => {
       try {
@@ -25,8 +28,6 @@ export default function TabLayout() {
     };
 
     loadCart();
-
-    // Update otomatis setiap 2 detik
     const interval = setInterval(loadCart, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -49,7 +50,7 @@ export default function TabLayout() {
         },
       }}
     >
-      {/* HOME */}
+      {/* 🏠 HOME */}
       <Tabs.Screen
         name="index"
         options={{
@@ -60,7 +61,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* CART (Keranjang) */}
+      {/* 🛒 CART */}
       <Tabs.Screen
         name="keranjang"
         options={{
@@ -75,10 +76,19 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <IconSymbol size={26} name="cart.fill" color={color} />
           ),
+          headerShown: true,
+          headerLeft: () => (
+            <TouchableOpacity
+              style={{ marginLeft: 12 }}
+              onPress={() => router.push('/(tabs)/index')}
+            >
+              <Ionicons name="arrow-back" size={24} color="#4b2e05" />
+            </TouchableOpacity>
+          ),
         }}
       />
 
-      {/* FAVORITES */}
+      {/* ❤️ FAVORITES */}
       <Tabs.Screen
         name="favorites"
         options={{
@@ -86,16 +96,59 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <IconSymbol size={26} name="heart.fill" color={color} />
           ),
+          headerShown: true,
+          headerLeft: () => (
+            <TouchableOpacity
+              style={{ marginLeft: 12 }}
+              onPress={() => router.push('/(tabs)/index')}
+            >
+              <Ionicons name="arrow-back" size={24} color="#4b2e05" />
+            </TouchableOpacity>
+          ),
         }}
       />
 
-      {/* PROFILE */}
+      {/* 👤 PROFILE */}
       <Tabs.Screen
         name="profil"
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={26} name="person.crop.circle.fill" color={color} />
+            <IconSymbol
+              size={26}
+              name="person.crop.circle.fill"
+              color={color}
+            />
+          ),
+          headerShown: true,
+          headerLeft: () => (
+            <TouchableOpacity
+              style={{ marginLeft: 12 }}
+              onPress={() => router.push('/(tabs)/index')}
+            >
+              <Ionicons name="arrow-back" size={24} color="#4b2e05" />
+            </TouchableOpacity>
+          ),
+        }}
+      />
+
+      {/* 🔥 TRENDING */}
+      <Tabs.Screen
+        name="trending"
+        options={{
+          title: 'Trending',
+          // ✅ pakai Ionicons agar icon muncul di semua platform
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="flame" size={26} color={color} />
+          ),
+          headerShown: true,
+          headerLeft: () => (
+            <TouchableOpacity
+              style={{ marginLeft: 12 }}
+              onPress={() => router.push('/(tabs)/index')}
+            >
+              <Ionicons name="arrow-back" size={24} color="#4b2e05" />
+            </TouchableOpacity>
           ),
         }}
       />
