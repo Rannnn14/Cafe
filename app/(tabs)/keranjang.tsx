@@ -1,127 +1,171 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  FlatList,
-  Image,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  ScrollView,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ThemedView } from '@/components/themed-view';
 import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCallback } from 'react';
-
+import { useCallback, useEffect, useState } from 'react';
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface CartItem {
   id: string;
   name: string;
-  price: string; // "25K"
+  price: string; 
   image: any;
   quantity: number;
+  checked?: boolean;
 }
 
 export default function KeranjangScreen() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [total, setTotal] = useState<number>(0);
 
-  // Load cart
+  /**  Load data keranjang */
+  useFocusEffect(
+    useCallback(() => {
+      const loadCart = async () => {
+        try {
+          const stored = await AsyncStorage.getItem('cart');
+          if (stored) {
+            const parsed = JSON.parse(stored).map((item: CartItem) => ({
+              ...item,
+              checked: item.checked ?? false,
+            }));
+            setCart(parsed);
+          } else setCart([]);
+        } catch (err) {
+          console.log('Error loading cart:', err);
+        }
+      };
+      loadCart();
+    }, [])
+  );
+
+  /**  Hitung total berdasarkan item yang dicentang */
   useEffect(() => {
-    const loadCart = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('cart');
-        if (stored) setCart(JSON.parse(stored));
-      } catch (err) {
-        console.log('Error loading cart:', err);
-      }
-    };
-    loadCart();
-  }, []);
+    const newTotal = cart.reduce((sum, item) => {
+      if (!item.checked) return sum;
+      const priceNumber = parseInt(item.price.replace('K', '')) * 1000;
+      return sum + priceNumber * item.quantity;
+    }, 0);
+    setTotal(newTotal);
+  }, [cart]);
 
-  // Update total whenever cart changes
-useFocusEffect(
-  useCallback(() => {
-    const loadCart = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('cart');
-        if (stored) setCart(JSON.parse(stored));
-      } catch (err) {
-        console.log('Error loading cart:', err);
-      }
-    };
-    loadCart();
-  }, [])
-);
-
-
+  /**  Simpan ke AsyncStorage */
   const saveCart = async (newCart: CartItem[]) => {
     setCart(newCart);
     await AsyncStorage.setItem('cart', JSON.stringify(newCart));
   };
 
+  /**  Aksi + dan - */
   const increase = (id: string) => {
-    const newCart = cart.map(item =>
-      item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+    saveCart(
+      cart.map(item =>
+        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
+      )
     );
-    saveCart(newCart);
   };
 
   const decrease = (id: string) => {
-    const newCart = cart.map(item =>
-      item.id === id ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item
+    saveCart(
+      cart.map(item =>
+        item.id === id ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item
+      )
     );
-    saveCart(newCart);
   };
 
-  const renderItem = ({ item }: { item: CartItem }) => {
-    const priceNumber = parseInt(item.price.replace('K', '')) * 1000;
-    return (
-      <View style={styles.card}>
-        <Image source={item.image} style={styles.image} resizeMode="cover" />
-        <View style={styles.info}>
-          <ThemedText style={styles.name}>{item.name}</ThemedText>
-          <View style={styles.quantityRow}>
-            <TouchableOpacity style={styles.btn} onPress={() => decrease(item.id)}>
-              <Text style={styles.btnText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.qty}>{item.quantity}</Text>
-            <TouchableOpacity style={styles.btn} onPress={() => increase(item.id)}>
-              <Text style={styles.btnText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.subtotal}>
-          <ThemedText style={styles.subtotalText}>
-            Rp { (priceNumber * item.quantity).toLocaleString('id-ID') }
-          </ThemedText>
-        </View>
-      </View>
+  /**  Hapus item */
+  const removeItem = async (id: string) => {
+    const newCart = cart.filter(item => item.id !== id);
+    await saveCart(newCart);
+  };
+
+  /**  Toggle checkbox */
+  const toggleCheck = (id: string) => {
+    const updated = cart.map(item =>
+      item.id === id ? { ...item, checked: !item.checked } : item
     );
+    saveCart(updated);
   };
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView>
+      <ScrollView showsVerticalScrollIndicator={false}>
         {cart.length === 0 ? (
-          <ThemedText style={styles.emptyText}>Keranjang kosong 😢</ThemedText>
+          <ThemedText style={styles.emptyText}>Keranjang Kosong</ThemedText>
         ) : (
-          <FlatList
-            data={cart}
-            renderItem={renderItem}
-            keyExtractor={item => item.id}
-            scrollEnabled={false}
-            contentContainerStyle={{ paddingBottom: 20 }}
-          />
+          cart.map(item => {
+            const priceNumber = parseInt(item.price.replace('K', '')) * 1000;
+            const subtotal = priceNumber * item.quantity;
+
+            return (
+              <View key={item.id} style={styles.card}>
+                {/* Checkbox */}
+                <TouchableOpacity onPress={() => toggleCheck(item.id)} style={styles.checkbox}>
+                  <Ionicons
+                    name={item.checked ? 'checkbox' : 'square-outline'}
+                    size={22}
+                    color={item.checked ? '#4b2e05' : '#aaa'}
+                  />
+                </TouchableOpacity>
+
+                {/* Gambar & Info */}
+                <Image source={item.image} style={styles.image} resizeMode="cover" />
+                <View style={{ flex: 1 }}>
+                  <View style={styles.rowBetween}>
+                    <ThemedText style={styles.name}>{item.name}</ThemedText>
+                    <ThemedText style={styles.subtotalText}>
+                      Rp {subtotal.toLocaleString('id-ID')}
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.quantityRow}>
+                    <TouchableOpacity style={styles.btn} onPress={() => decrease(item.id)}>
+                      <Text style={styles.btnText}>−</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.qty}>{item.quantity}</Text>
+                    <TouchableOpacity style={styles.btn} onPress={() => increase(item.id)}>
+                      <Text style={styles.btnText}>+</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={() => removeItem(item.id)}>
+                      <Text style={styles.removeText}>Hapus</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            );
+          })
         )}
 
-        <View style={styles.totalRow}>
-          <ThemedText style={styles.totalText}>Total:</ThemedText>
-          <ThemedText style={styles.totalText}>
-            Rp { total.toLocaleString('id-ID') }
-          </ThemedText>
-        </View>
+        {/*  Total & Checkout */}
+        {cart.length > 0 && (
+          <>
+            <View style={styles.totalRow}>
+              <ThemedText style={styles.totalLabel}>Total</ThemedText>
+              <ThemedText style={styles.totalValue}>
+                Rp {total.toLocaleString('id-ID')}
+              </ThemedText>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.checkoutButton,
+                { opacity: total === 0 ? 0.5 : 1 },
+              ]}
+              disabled={total === 0}
+              onPress={() => console.log('Checkout:', cart.filter(c => c.checked))}
+            >
+              <Text style={styles.checkoutText}>Checkout Sekarang</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </ScrollView>
     </ThemedView>
   );
@@ -131,38 +175,54 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#f6f2ec' },
   card: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 16,
-    marginBottom: 12,
     padding: 12,
-    alignItems: 'center',
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  image: { width: 60, height: 60, borderRadius: 12, marginRight: 12 },
-  info: { flex: 1, justifyContent: 'center' },
-  name: { fontWeight: '700', fontSize: 16, marginBottom: 8, color: '#000' },
-  quantityRow: { flexDirection: 'row', alignItems: 'center' },
+  checkbox: { marginRight: 8 },
+  image: { width: 55, height: 55, borderRadius: 10, marginRight: 10 },
+  name: { fontWeight: '700', fontSize: 14, color: '#000' },
+  subtotalText: { fontWeight: '600', fontSize: 13, color: '#000' },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 8,
+  },
   btn: {
     backgroundColor: '#4b2e05',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
     borderRadius: 8,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  qty: { marginHorizontal: 12, fontSize: 16, fontWeight: '600', color: '#000' },
-  subtotal: { width: 90, alignItems: 'flex-end' },
-  subtotalText: { fontWeight: '700', fontSize: 14, color: '#000' },
+  btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  qty: { fontWeight: '600', fontSize: 14, color: '#000' },
+  removeText: { color: '#e63946', fontWeight: '600', fontSize: 13, marginLeft: 10 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between' },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 20,
-    paddingTop: 16,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#ccc',
+    borderTopColor: '#d1c7b8',
   },
-  totalText: { fontWeight: '800', fontSize: 18, color: '#000' },
-  emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16, color: '#000' },
+  totalLabel: { fontWeight: '700', fontSize: 16, color: '#3e2723' },
+  totalValue: { fontWeight: '800', fontSize: 16, color: '#3e2723' },
+  checkoutButton: {
+    backgroundColor: '#4b2e05',
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 20,
+  },
+  checkoutText: { color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  emptyText: { textAlign: 'center', marginTop: 60, fontSize: 16, color: '#3e2723' },
 });

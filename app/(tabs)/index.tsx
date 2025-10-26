@@ -1,21 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  TextInput,
+  Alert,
+  Animated,
+  Dimensions,
   FlatList,
   Image,
-  StyleSheet,
-  TouchableOpacity,
   ScrollView,
-  Dimensions,
-  Alert,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
-
-
-
 
 interface CoffeeItem {
   id: string;
@@ -46,19 +45,31 @@ const cardSize = (screenWidth - 80) / 4; // 4 kolom
 export default function HomeScreen() {
   const [search, setSearch] = useState<string>('');
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [cartCount, setCartCount] = useState<number>(0);
+  const heartScale = useRef(new Animated.Value(1)).current;
 
-  // Load favorites
+  // Load favorites & cart
   useEffect(() => {
-    const loadFavorites = async () => {
+    const loadData = async () => {
       try {
-        const stored = await AsyncStorage.getItem('favorites');
-        if (stored) setFavorites(JSON.parse(stored));
+        const storedFav = await AsyncStorage.getItem('favorites');
+        if (storedFav) setFavorites(JSON.parse(storedFav));
+
+        const storedCart = await AsyncStorage.getItem('cart');
+        if (storedCart) setCartCount(JSON.parse(storedCart).length);
       } catch (err) {
-        console.log('Error loading favorites:', err);
+        console.log('Error loading data:', err);
       }
     };
-    loadFavorites();
+    loadData();
   }, []);
+
+  const animateHeart = () => {
+    Animated.sequence([
+      Animated.timing(heartScale, { toValue: 1.3, duration: 150, useNativeDriver: true }),
+      Animated.timing(heartScale, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+  };
 
   const toggleFavorite = async (id: string) => {
     try {
@@ -67,6 +78,7 @@ export default function HomeScreen() {
         updatedFavorites = updatedFavorites.filter(fav => fav !== id);
       } else {
         updatedFavorites.push(id);
+        animateHeart();
       }
       setFavorites(updatedFavorites);
       await AsyncStorage.setItem('favorites', JSON.stringify(updatedFavorites));
@@ -88,7 +100,8 @@ export default function HomeScreen() {
       }
 
       await AsyncStorage.setItem('cart', JSON.stringify(currentCart));
-      Alert.alert('Success', `${item.name} added to cart!`);
+      setCartCount(currentCart.length);
+      Alert.alert('☕ Added', `${item.name} added to cart!`);
     } catch (err) {
       console.log('Error adding to cart:', err);
     }
@@ -105,22 +118,23 @@ export default function HomeScreen() {
       <View style={styles.card}>
         <Image source={item.image} style={styles.image} resizeMode="cover" />
 
-        {/* Tombol love di atas kanan */}
         <TouchableOpacity style={styles.heartBtn} onPress={() => toggleFavorite(item.id)}>
-          <ThemedText style={{ color: isFavorite ? '#e63946' : '#fff', fontSize: 18 }}>
-            ♥
-          </ThemedText>
+          <Animated.View style={{ transform: [{ scale: heartScale }] }}>
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={18}
+              color={isFavorite ? '#e63946' : '#fff'}
+            />
+          </Animated.View>
         </TouchableOpacity>
 
-        {/* Nama & harga di bawah gambar */}
         <View style={styles.infoContainer}>
           <ThemedText style={styles.name}>{item.name}</ThemedText>
           <ThemedText style={styles.price}>{item.price}</ThemedText>
         </View>
 
-        {/* Tombol Add to Cart */}
         <TouchableOpacity style={styles.cartBtn} onPress={() => addToCart(item)}>
-          <ThemedText style={styles.cartBtnText}>Add to Cart</ThemedText>
+          <ThemedText style={styles.cartBtnText}> Add to Cart</ThemedText>
         </TouchableOpacity>
       </View>
     );
@@ -129,11 +143,15 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Image source={require('@/assets/images/ini.png')} style={styles.headerImage} />
-        <ThemedText type="title" style={styles.headerText}>
-          Welcome to Cozy Coffee ☕
-        </ThemedText>
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <Image source={require('@/assets/images/ini.png')} style={styles.headerImage} />
+          <ThemedText type="title" style={styles.headerText}>
+            Welcome to Cozy Coffee ☕
+          </ThemedText>
+        </View>
 
+        {/* Search */}
         <TextInput
           style={styles.searchBar}
           placeholder="Search your favorite coffee..."
@@ -142,6 +160,7 @@ export default function HomeScreen() {
           onChangeText={setSearch}
         />
 
+        {/* List */}
         <FlatList
           data={filteredCoffee}
           renderItem={renderItem}
@@ -158,8 +177,30 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f6f2ec', paddingHorizontal: 16, paddingTop: 40 },
-  headerImage: { width: '100%', height: 180, borderRadius: 20, marginBottom: 20 },
-  headerText: { textAlign: 'center', fontWeight: '700', fontSize: 22, color: '#3e2723', marginBottom: 16 },
+  headerContainer: { position: 'relative', marginBottom: 16 },
+  headerImage: { width: '100%', height: 180, borderRadius: 20, marginBottom: 12 },
+  headerText: { textAlign: 'center', fontWeight: '700', fontSize: 22, color: '#3e2723' },
+
+  cartIconContainer: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 6,
+    elevation: 4,
+  },
+  cartBadge: {
+    position: 'absolute',
+    right: 4,
+    top: 2,
+    backgroundColor: '#e63946',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  cartBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700' },
+
   searchBar: {
     backgroundColor: '#fff',
     borderRadius: 14,
@@ -181,10 +222,10 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
     overflow: 'hidden',
   },
-  image: { width: '100%', height: cardSize - 20, borderTopLeftRadius: 14, borderTopRightRadius: 14 },
+  image: { width: '100%', height: cardSize - 20 },
   heartBtn: {
     position: 'absolute',
     top: 6,
@@ -204,12 +245,14 @@ const styles = StyleSheet.create({
   name: { fontWeight: '700', color: '#4b2e05', fontSize: 13 },
   price: { color: '#9c7b56', fontSize: 12, fontWeight: '600', marginTop: 2 },
   cartBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#4b2e05',
     borderRadius: 12,
     paddingVertical: 4,
     marginHorizontal: 6,
     marginBottom: 6,
-    alignItems: 'center',
   },
   cartBtnText: { color: '#fff', fontSize: 11, fontWeight: '600' },
 });
