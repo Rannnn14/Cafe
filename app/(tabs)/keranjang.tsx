@@ -6,12 +6,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Image,
+  Alert, Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 interface CartItem {
@@ -166,7 +166,27 @@ export default function KeranjangScreen() {
             <TouchableOpacity
               style={[styles.checkoutButton, { opacity: total === 0 ? 0.5 : 1 }]}
               disabled={total === 0}
-              onPress={() => console.log('Checkout:', cart.filter(c => c.checked))}
+              onPress={() => {
+                if (total === 0) return;
+                Alert.alert(
+                  "Konfirmasi Checkout",
+                  "Kesuwun uis Tuku ning Coffe Shop",
+                  [
+                    {
+                      text: "Batal",
+                      style: "cancel"
+                    },
+                    {
+                      text: "Sama-sama",
+                      onPress: () => {
+                        console.log('Checkout:', cart.filter(c => c.checked));
+                        // di sini nanti kamu bisa arahkan ke halaman pembayaran, misalnya:
+                        // navigation.navigate("Pembayaran");
+                      }
+                    }
+                  ]
+                );
+              }}
             >
               <Text style={styles.checkoutText}>Checkout Sekarang</Text>
             </TouchableOpacity>
