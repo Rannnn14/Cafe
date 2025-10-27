@@ -1,34 +1,37 @@
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function ProfilScreen() {
-  const [name, setName] = useState("Faqih Firansyah");
-  const [email, setEmail] = useState("faqih@example.com");
-  const [bio, setBio] = useState("Pecinta kopi dan suasana santai ☕");
+  const [name, setName] = useState("Lucas Matias");
+  const [email, setEmail] = useState("lucas@email.com");
 
   const loadProfile = async () => {
     try {
       const savedName = await AsyncStorage.getItem("user_name");
       const savedEmail = await AsyncStorage.getItem("user_email");
-      const savedBio = await AsyncStorage.getItem("user_bio");
 
       if (savedName) setName(savedName);
       if (savedEmail) setEmail(savedEmail);
-      if (savedBio) setBio(savedBio);
     } catch (err) {
       console.log("Error loading profile:", err);
     }
   };
 
-  // Jalankan sekali saat mount
   useEffect(() => {
     loadProfile();
   }, []);
 
-  // Juga jalankan tiap kali layar difokuskan
   useFocusEffect(
     useCallback(() => {
       loadProfile();
@@ -41,7 +44,8 @@ export default function ProfilScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Header Profile */}
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
             <Image
@@ -49,41 +53,55 @@ export default function ProfilScreen() {
               style={styles.avatar}
             />
           </View>
-
           <Text style={styles.name}>{name}</Text>
           <Text style={styles.email}>{email}</Text>
-
-          {/* tampilkan bio jika ada */}
-          {bio ? <Text style={styles.bio}>{bio}</Text> : null}
 
           <TouchableOpacity
             style={styles.editBtn}
             onPress={() => router.push("../editProfil")}
           >
-            <Text style={styles.editText}>Edit Profil</Text>
+            <Text style={styles.editText}>Edit profile</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => navigateTo("/favorites")}
-        >
-          <Text style={styles.menuText}>❤️ Favorit</Text>
-        </TouchableOpacity>
+        {/* Menu Section */}
+        <View style={styles.menuContainer}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigateTo("/orderHistory")}
+          >
+            <MaterialIcons name="receipt-long" size={22} color="#C36A2D" />
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuTitle}>Order History</Text>
+              <Text style={styles.menuSubtitle}>Orders information</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9C8C84" />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => navigateTo("/keranjang")}
-        >
-          <Text style={styles.menuText}>🛒 Keranjang</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigateTo("/paymentMethods")}
+          >
+            <MaterialIcons name="payment" size={22} color="#C36A2D" />
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuTitle}>Payment Methods</Text>
+              <Text style={styles.menuSubtitle}>Pay your bill</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9C8C84" />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => navigateTo("/pengaturan")}
-        >
-          <Text style={styles.menuText}>⚙️ Pengaturan</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigateTo("/deliveryAddresses")}
+          >
+            <Ionicons name="location-outline" size={22} color="#C36A2D" />
+            <View style={styles.menuTextContainer}>
+              <Text style={styles.menuTitle}>Delivery Addresses</Text>
+              <Text style={styles.menuSubtitle}>Your delivery location</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9C8C84" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -94,16 +112,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5EDE3",
   },
+  scroll: {
+    paddingVertical: 40,
+  },
   header: {
     alignItems: "center",
-    marginVertical: 20,
+    marginBottom: 25,
   },
   avatarContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
     overflow: "hidden",
-    marginBottom: 10,
+    backgroundColor: "#fff",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
   },
   avatar: {
     width: "100%",
@@ -113,44 +138,53 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
     color: "#3B302A",
+    marginTop: 15,
   },
   email: {
     fontSize: 14,
     color: "#7D6B5D",
-  },
-  bio: {
-    fontSize: 13,
-    color: "#5C4B44",
-    marginTop: 5,
-    textAlign: "center",
-    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   editBtn: {
-    backgroundColor: "#300f00ff",
-    paddingVertical: 8,
+    backgroundColor: "#C36A2D",
+    paddingVertical: 10,
     paddingHorizontal: 25,
     borderRadius: 10,
-    marginTop: 10,
-
+    marginTop: 5,
   },
   editText: {
     color: "white",
-    fontWeight: "bold",
+    fontWeight: "600",
+  },
+  menuContainer: {
+    marginTop: 10,
   },
   menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "white",
     marginHorizontal: 20,
     marginVertical: 6,
     paddingVertical: 15,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 15,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
   },
-  menuText: {
+  menuTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  menuTitle: {
     fontSize: 16,
+    fontWeight: "600",
     color: "#3B302A",
+  },
+  menuSubtitle: {
+    fontSize: 12,
+    color: "#7D6B5D",
   },
 });
