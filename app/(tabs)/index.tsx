@@ -3,19 +3,17 @@ import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useRef, useState } from 'react';
-import { styles } from "../styles/index.styles";
 import {
   Alert,
   Animated,
-  Dimensions,
   FlatList,
   Image,
   ScrollView,
-  StyleSheet,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import { styles } from "../../components/styles/index.styles";
 
 interface CoffeeItem {
   id: string;

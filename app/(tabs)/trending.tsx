@@ -1,11 +1,11 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
-import { FlatList, Image, StyleSheet, View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { styles } from "../styles/trending";
+import { useEffect, useState } from 'react';
+import { FlatList, Image, TouchableOpacity, View } from 'react-native';
+import { styles } from "../../components/styles/trending";
 
 interface CoffeeItem {
   id: string;

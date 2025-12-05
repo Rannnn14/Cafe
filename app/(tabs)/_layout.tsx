@@ -80,7 +80,7 @@ export default function TabLayout() {
           headerLeft: () => (
             <TouchableOpacity
               style={{ marginLeft: 12 }}
-              onPress={() => router.push('/(tabs)/index')}
+              onPress={() => router.push('./(tabs)/index')}
             >
               <Ionicons name="arrow-back" size={24} color="#4b2e05" />
             </TouchableOpacity>
@@ -100,7 +100,7 @@ export default function TabLayout() {
           headerLeft: () => (
             <TouchableOpacity
               style={{ marginLeft: 12 }}
-              onPress={() => router.push('/(tabs)/index')}
+              onPress={() => router.push('./(tabs)/index')}
             >
               <Ionicons name="arrow-back" size={24} color="#4b2e05" />
             </TouchableOpacity>
@@ -124,7 +124,7 @@ export default function TabLayout() {
           headerLeft: () => (
             <TouchableOpacity
               style={{ marginLeft: 12 }}
-              onPress={() => router.push('/(tabs)/index')}
+              onPress={() => router.push('./(tabs)/index')}
             >
               <Ionicons name="arrow-back" size={24} color="#4b2e05" />
             </TouchableOpacity>
@@ -145,7 +145,7 @@ export default function TabLayout() {
           headerLeft: () => (
             <TouchableOpacity
               style={{ marginLeft: 12 }}
-              onPress={() => router.push('/(tabs)/index')}
+              onPress={() => router.push('./(tabs)/index')}
             >
               <Ionicons name="arrow-back" size={24} color="#4b2e05" />
             </TouchableOpacity>

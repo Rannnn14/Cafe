@@ -5,7 +5,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { styles } from "../styles/cart.styles";
 import {
   Alert, Image,
   ScrollView,
@@ -13,6 +12,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { styles } from "../../components/styles/cart.styles";
 
 interface CartItem {
   id: string;

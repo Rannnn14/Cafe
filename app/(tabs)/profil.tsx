@@ -2,7 +2,6 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { styles } from "../styles/profil.styles";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Image,
@@ -11,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { styles } from "../../components/styles/profil.styles";
 
 export default function ProfilScreen() {
   const [name, setName] = useState("Lucas Matias");
