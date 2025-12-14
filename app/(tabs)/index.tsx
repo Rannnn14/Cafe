@@ -1,6 +1,7 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -85,6 +86,15 @@ export default function HomeScreen() {
 
   const addToCart = async (item: CoffeeItem) => {
     try {
+      // SIMPAN KE SUPABASE
+      await supabase.from('orders').insert({
+        product_id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: 1,
+      });
+
+      // LOGIC LAMA (AsyncStorage) TETAP
       const stored = await AsyncStorage.getItem('cart');
       let currentCart: CartItem[] = stored ? JSON.parse(stored) : [];
 

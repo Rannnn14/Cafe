@@ -1,62 +1,47 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { FlatList, Image, TouchableOpacity, View } from 'react-native';
+import { FlatList, TouchableOpacity, View } from 'react-native';
 import { styles } from "../../components/styles/trending";
+import { supabase } from '@/lib/supabase';
 
-interface CoffeeItem {
-  id: string;
+/**
+ * SESUAI VIEW:
+ * create view leaderboard_products as
+ * select name, sum(quantity) as total_order
+ */
+interface TrendingItem {
   name: string;
-  price: string;
-  image: any;
-}
-
-interface CartItem extends CoffeeItem {
-  quantity: number;
+  total_order: number;
 }
 
 export default function TrendingScreen() {
-  const [trending, setTrending] = useState<CartItem[]>([]);
+  const [trending, setTrending] = useState<TrendingItem[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     const loadTrending = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('cart');
-        if (stored) {
-          const cartData: CartItem[] = JSON.parse(stored);
+      const { data, error } = await supabase
+        .from('leaderboard_products')
+        .select('*');
 
-          // Hitung total pembelian per item
-          const trendMap: Record<string, CartItem> = {};
-          cartData.forEach((item) => {
-            if (trendMap[item.id]) {
-              trendMap[item.id].quantity += item.quantity;
-            } else {
-              trendMap[item.id] = { ...item };
-            }
-          });
-
-          const sorted = Object.values(trendMap).sort(
-            (a, b) => b.quantity - a.quantity
-          );
-          setTrending(sorted);
-        }
-      } catch (err) {
-        console.log('Error loading trending:', err);
+      if (error) {
+        console.log('Error loading trending:', error);
+        return;
       }
+
+      setTrending(data || []);
     };
 
     loadTrending();
-    const interval = setInterval(loadTrending, 3000);
-    return () => clearInterval(interval);
   }, []);
 
   const renderStars = (quantity: number) => {
     const maxStars = 5;
     const filledStars = Math.min(maxStars, Math.ceil(quantity / 2));
+
     return (
       <View style={{ flexDirection: 'row', marginTop: 4 }}>
         {[...Array(maxStars)].map((_, i) => (
@@ -71,22 +56,22 @@ export default function TrendingScreen() {
     );
   };
 
-  const renderItem = ({ item, index }: { item: CartItem; index: number }) => (
+  const renderItem = ({ item, index }: { item: TrendingItem; index: number }) => (
     <View style={styles.card}>
-      <Image source={item.image} style={styles.image} />
       <View style={styles.info}>
         <ThemedText style={styles.rank}>#{index + 1}</ThemedText>
         <ThemedText style={styles.name}>{item.name}</ThemedText>
-        <ThemedText style={styles.price}>{item.price}</ThemedText>
-        <ThemedText style={styles.count}>Sold: {item.quantity}</ThemedText>
-        {renderStars(item.quantity)}
+        <ThemedText style={styles.count}>
+          Sold: {item.total_order}
+        </ThemedText>
+        {renderStars(item.total_order)}
       </View>
     </View>
   );
 
   return (
     <ThemedView style={styles.container}>
-      {/* 🔙 Tombol Panah Kembali */}
+      {/* 🔙 Tombol Kembali */}
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => router.replace('/')}
@@ -106,7 +91,7 @@ export default function TrendingScreen() {
         <FlatList
           data={trending}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.name}
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
         />
@@ -114,5 +99,3 @@ export default function TrendingScreen() {
     </ThemedView>
   );
 }
-
-
