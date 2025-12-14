@@ -1,7 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAnonymousUser } from '@/hooks/useAnonymousUser';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -15,7 +16,8 @@ import {
 import { styles } from "../../components/styles/cart.styles";
 
 interface CartItem {
-  id: string;
+  id: string; // Cart Item unique ID
+  product_id: string;
   name: string;
   price: string;
   image: any;
@@ -24,32 +26,52 @@ interface CartItem {
 }
 
 export default function KeranjangScreen() {
-  const [cart, setCart] = useState<CartItem[]>([]); //Menyimpan daftar item di keranjang.
-  const [total, setTotal] = useState<number>(0); //Menyimpan jumlah harga dari item yang dicentang.
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [total, setTotal] = useState<number>(0);
+  const userId = useAnonymousUser();
 
-  /** Load data keranjang */
-  // Saat halaman keranjang dibuka, data produk diambil dari AsyncStorage (penyimpanan lokal).
   useFocusEffect(
     useCallback(() => {
-      const loadCart = async () => {
-        try {
-          const stored = await AsyncStorage.getItem('cart');
-          if (stored) {
-            const parsed = JSON.parse(stored).map((item: CartItem) => ({
-              ...item,
-              checked: item.checked ?? false,
-            }));
-            setCart(parsed);
-          } else setCart([]);
-        } catch (err) {
-          console.log('Error loading cart:', err);
-        }
-      };
-      loadCart();
-    }, [])
+      if (userId) loadCart();
+    }, [userId])
   );
 
-  /** Hitung total berdasarkan item yang dicentang */
+  const loadCart = async () => {
+    try {
+      // Fetch cart items joined with Coffee data
+      const { data, error } = await supabase
+        .from('Cart')
+        .select(`
+          id,
+          quantity,
+          product_id,
+          Coffee (
+            name,
+            price,
+            image
+          )
+        `)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      if (data) {
+        const formattedCart = data.map((item: any) => ({
+          id: item.id, // Cart item ID
+          product_id: item.product_id,
+          name: item.Coffee.name,
+          price: item.Coffee.price,
+          image: typeof item.Coffee.image === 'string' ? { uri: item.Coffee.image } : item.Coffee.image,
+          quantity: item.quantity,
+          checked: false,
+        }));
+        setCart(formattedCart);
+      }
+    } catch (err) {
+      console.log('Error loading cart:', err);
+    }
+  };
+
   useEffect(() => {
     const newTotal = cart.reduce((sum, item) => {
       if (!item.checked) return sum;
@@ -59,41 +81,111 @@ export default function KeranjangScreen() {
     setTotal(newTotal);
   }, [cart]);
 
-  /** Simpan ke AsyncStorage */
-  const saveCart = async (newCart: CartItem[]) => {
-    setCart(newCart);
-    await AsyncStorage.setItem('cart', JSON.stringify(newCart));
+  const updateQuantity = async (id: string, newQuantity: number) => {
+    try {
+      const { error } = await supabase
+        .from('Cart')
+        .update({ quantity: newQuantity })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setCart(prev =>
+        prev.map(item =>
+          item.id === id ? { ...item, quantity: newQuantity } : item
+        )
+      );
+    } catch (err) {
+      console.log('Error updating quantity:', err);
+    }
   };
 
-  /** Aksi + dan - */
   const increase = (id: string) => {
-    saveCart(
-      cart.map(item =>
-        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
-      )
-    );
+    const item = cart.find(c => c.id === id);
+    if (item) updateQuantity(id, item.quantity + 1);
   };
 
   const decrease = (id: string) => {
-    saveCart(
-      cart.map(item =>
-        item.id === id ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item
+    const item = cart.find(c => c.id === id);
+    if (item && item.quantity > 1) updateQuantity(id, item.quantity - 1);
+  };
+
+  const removeItem = async (id: string) => {
+    try {
+      const { error } = await supabase.from('Cart').delete().eq('id', id);
+      if (error) throw error;
+      setCart(prev => prev.filter(item => item.id !== id));
+    } catch (err) {
+      console.log('Error removing item:', err);
+    }
+  };
+
+  const toggleCheck = (id: string) => {
+    setCart(prev =>
+      prev.map(item =>
+        item.id === id ? { ...item, checked: !item.checked } : item
       )
     );
   };
 
-  /** Hapus item */
-  const removeItem = async (id: string) => {
-    const newCart = cart.filter(item => item.id !== id);
-    await saveCart(newCart);
-  };
+  const handleCheckout = async () => {
+    if (total === 0 || !userId) return;
 
-  /** Toggle checkbox */
-  const toggleCheck = (id: string) => {
-    const updated = cart.map(item =>
-      item.id === id ? { ...item, checked: !item.checked } : item
+    Alert.alert(
+      "Konfirmasi Checkout",
+      "Kesuwun uis Tuku ning Coffe Shop",
+      [
+        {
+          text: "Batal",
+          style: "cancel"
+        },
+        {
+          text: "Sama-sama",
+          onPress: async () => {
+            try {
+              const checkedItems = cart.filter(c => c.checked);
+
+              // Create orders for each checked item
+              // Assuming 'orders' table structure. If it's one order per checkout:
+              // We might want to group them. For now, inserting individual records or a JSON blob.
+              // Letting's assume simple: Insert into 'orders' with details.
+
+              const orderData = checkedItems.map(item => ({
+                user_id: userId,
+                product_id: item.product_id,
+                quantity: item.quantity,
+                total_price: (parseInt(item.price.replace('K', '')) * 1000) * item.quantity,
+                created_at: new Date().toISOString(),
+                status: 'pending' // if needed
+              }));
+
+              const { error: orderError } = await supabase
+                .from('orders')
+                .insert(orderData);
+
+              if (orderError) throw orderError;
+
+              // Remove checked items from cart
+              const idsToDelete = checkedItems.map(c => c.id);
+              const { error: deleteError } = await supabase
+                .from('Cart')
+                .delete()
+                .in('id', idsToDelete);
+
+              if (deleteError) throw deleteError;
+
+              setCart(prev => prev.filter(c => !c.checked));
+              Alert.alert("Success", "Order placed successfully!");
+              router.push('/orderHistory');
+
+            } catch (err) {
+              console.log('Checkout error:', err);
+              Alert.alert("Error", "Checkout failed.");
+            }
+          }
+        }
+      ]
     );
-    saveCart(updated);
   };
 
   return (
@@ -167,27 +259,7 @@ export default function KeranjangScreen() {
             <TouchableOpacity
               style={[styles.checkoutButton, { opacity: total === 0 ? 0.5 : 1 }]}
               disabled={total === 0}
-              onPress={() => {
-                if (total === 0) return;
-                Alert.alert(
-                  "Konfirmasi Checkout",
-                  "Kesuwun uis Tuku ning Coffe Shop",
-                  [
-                    {
-                      text: "Batal",
-                      style: "cancel"
-                    },
-                    {
-                      text: "Sama-sama",
-                      onPress: () => {
-                        console.log('Checkout:', cart.filter(c => c.checked));
-                        // di sini nanti kamu bisa arahkan ke halaman pembayaran, misalnya:
-                        // navigation.navigate("Pembayaran");
-                      }
-                    }
-                  ]
-                );
-              }}
+              onPress={handleCheckout}
             >
               <Text style={styles.checkoutText}>Checkout Sekarang</Text>
             </TouchableOpacity>

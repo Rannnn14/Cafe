@@ -1,4 +1,4 @@
-import { useAuth } from "@/context/AuthContext";
+
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
@@ -14,7 +14,6 @@ import {
 import { styles } from "../../components/styles/profil.styles";
 
 export default function ProfilScreen() {
-  const { signOut } = useAuth();
   const [name, setName] = useState("Lucas Matias");
   const [email, setEmail] = useState("lucas@email.com");
 
@@ -105,20 +104,7 @@ export default function ProfilScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Logout Button */}
-        <View style={[styles.menuContainer, { marginTop: 24 }]}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={signOut}
-          >
-            <MaterialIcons name="logout" size={22} color="#D9534F" />
-            <View style={styles.menuTextContainer}>
-              <Text style={[styles.menuTitle, { color: "#D9534F" }]}>Log Out</Text>
-              <Text style={styles.menuSubtitle}>Sign out of your account</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#D9534F" />
-          </TouchableOpacity>
-        </View>
+
 
       </ScrollView>
     </View>

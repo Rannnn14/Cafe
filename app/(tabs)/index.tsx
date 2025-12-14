@@ -1,7 +1,8 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useAnonymousUser } from '@/hooks/useAnonymousUser';
+import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -26,39 +27,58 @@ interface CartItem extends CoffeeItem {
   quantity: number;
 }
 
-const COFFEE_DATA: CoffeeItem[] = [
-  { id: '1', name: 'Espresso', price: '25K', image: require('@/assets/images/espresso.jpg') },
-  { id: '2', name: 'Latte', price: '28K', image: require('@/assets/images/latte.jpg') },
-  { id: '3', name: 'Cappuccino', price: '30K', image: require('@/assets/images/cappuccino.jpg') },
-  { id: '4', name: 'Iced Coffee', price: '27K', image: require('@/assets/images/icedcoffee.jpg') },
-  { id: '5', name: 'Mocha', price: '32K', image: require('@/assets/images/mocha.jpg') },
-  { id: '6', name: 'Americano', price: '24K', image: require('@/assets/images/americano.jpg') },
-  { id: '7', name: 'Macchiato', price: '29K', image: require('@/assets/images/macchiato.jpg') },
-  { id: '8', name: 'Flat White', price: '31K', image: require('@/assets/images/flatwhite.jpg') },
-  { id: '9', name: 'Hot Brew', price: '26K', image: require('@/assets/images/hotbrew.jpg') },
-];
+
 
 export default function HomeScreen() {
+  const [coffeeData, setCoffeeData] = useState<CoffeeItem[]>([]);
   const [search, setSearch] = useState<string>('');
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [cartCount, setCartCount] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
   const heartScale = useRef(new Animated.Value(1)).current;
+  const userId = useAnonymousUser();
 
-  // Load favorites & cart
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const storedFav = await AsyncStorage.getItem('favorites');
-        if (storedFav) setFavorites(JSON.parse(storedFav));
-
-        const storedCart = await AsyncStorage.getItem('cart');
-        if (storedCart) setCartCount(JSON.parse(storedCart).length);
-      } catch (err) {
-        console.log('Error loading data:', err);
-      }
-    };
-    loadData();
+    fetchCoffee();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      loadFavorites();
+    }
+  }, [userId]);
+
+  const fetchCoffee = async () => {
+    try {
+      const { data, error } = await supabase.from('Coffee').select('*');
+      if (error) {
+        throw error;
+      }
+      if (data) {
+        setCoffeeData(data);
+      }
+    } catch (e) {
+      console.error('Error fetching coffee:', e);
+      Alert.alert('Error', 'Failed to load menu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFavorites = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select('product_id')
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      if (data) {
+        setFavorites(data.map(f => f.product_id));
+      }
+    } catch (e) {
+      console.error('Error loading favorites:', e);
+    }
+  };
 
   const animateHeart = () => {
     Animated.sequence([
@@ -68,42 +88,83 @@ export default function HomeScreen() {
   };
 
   const toggleFavorite = async (id: string) => {
+    if (!userId) return;
+
     try {
-      let updatedFavorites = [...favorites];
-      if (updatedFavorites.includes(id)) {
-        updatedFavorites = updatedFavorites.filter(fav => fav !== id);
+      const isFav = favorites.includes(id);
+      let error;
+
+      if (isFav) {
+        const { error: err } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', userId)
+          .eq('product_id', id);
+        error = err;
       } else {
-        updatedFavorites.push(id);
+        const { error: err } = await supabase
+          .from('favorites')
+          .insert({ user_id: userId, product_id: id });
+        error = err;
+      }
+
+      if (error) throw error;
+
+      if (isFav) {
+        setFavorites(prev => prev.filter(fav => fav !== id));
+      } else {
+        setFavorites(prev => [...prev, id]);
         animateHeart();
       }
-      setFavorites(updatedFavorites);
-      await AsyncStorage.setItem('favorites', JSON.stringify(updatedFavorites));
     } catch (err) {
       console.log('Error saving favorites:', err);
+      Alert.alert('Error', 'Failed to update favorite');
     }
   };
 
   const addToCart = async (item: CoffeeItem) => {
-    try {
-      const stored = await AsyncStorage.getItem('cart');
-      let currentCart: CartItem[] = stored ? JSON.parse(stored) : [];
+    if (!userId) return;
 
-      const index = currentCart.findIndex(ci => ci.id === item.id);
-      if (index >= 0) {
-        currentCart[index].quantity += 1;
-      } else {
-        currentCart.push({ ...item, quantity: 1 });
+    try {
+      // Check if item exists in cart
+      const { data: existing, error: fetchError } = await supabase
+        .from('Cart')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('product_id', item.id)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is no rows returned
+        throw fetchError;
       }
 
-      await AsyncStorage.setItem('cart', JSON.stringify(currentCart));
-      setCartCount(currentCart.length);
+      if (existing) {
+        const { error } = await supabase
+          .from('Cart')
+          .update({ quantity: existing.quantity + 1 })
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('Cart')
+          .insert({
+            user_id: userId,
+            product_id: item.id,
+            quantity: 1,
+            // Assuming Cart table might want denormalized data or just ID. 
+            // If just ID, join is needed in Cart screen.
+          });
+        if (error) throw error;
+      }
+
       Alert.alert('☕ Added', `${item.name} added to cart!`);
     } catch (err) {
       console.log('Error adding to cart:', err);
+      Alert.alert('Error', 'Failed to add to cart');
     }
   };
 
-  const filteredCoffee = COFFEE_DATA.filter(item =>
+  const filteredCoffee = coffeeData.filter(item =>
     item.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -112,7 +173,11 @@ export default function HomeScreen() {
 
     return (
       <View style={styles.card}>
-        <Image source={item.image} style={styles.image} resizeMode="cover" />
+        <Image
+          source={typeof item.image === 'string' ? { uri: item.image } : item.image} // Handle both URL strings and local requires if mixed
+          style={styles.image}
+          resizeMode="cover"
+        />
 
         <TouchableOpacity style={styles.heartBtn} onPress={() => toggleFavorite(item.id)}>
           <Animated.View style={{ transform: [{ scale: heartScale }] }}>
@@ -160,7 +225,7 @@ export default function HomeScreen() {
         <FlatList
           data={filteredCoffee}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           numColumns={4}
           columnWrapperStyle={styles.row}
           scrollEnabled={false}
