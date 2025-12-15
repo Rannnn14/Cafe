@@ -1,45 +1,66 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { FlatList, Image, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, View, TouchableOpacity } from 'react-native';
+import { supabase } from '@/lib/supabase';
 import { styles } from "../../components/styles/favorites.styles";
 
-const COFFEE_DATA = [
-  { id: '1', name: 'Espresso', price: '25K', image: require('@/assets/images/espresso.jpg') },
-  { id: '2', name: 'Latte', price: '28K', image: require('@/assets/images/latte.jpg') },
-  { id: '3', name: 'Cappuccino', price: '30K', image: require('@/assets/images/cappuccino.jpg') },
-  { id: '4', name: 'Iced Coffee', price: '27K', image: require('@/assets/images/icedcoffee.jpg') },
-  { id: '5', name: 'Mocha', price: '32K', image: require('@/assets/images/mocha.jpg') },
-  { id: '6', name: 'Americano', price: '24K', image: require('@/assets/images/americano.jpg') },
-  { id: '7', name: 'Macchiato', price: '29K', image: require('@/assets/images/macchiato.jpg') },
-  { id: '8', name: 'Flat White', price: '31K', image: require('@/assets/images/flatwhite.jpg') },
-  { id: '9', name: 'Hot Brew', price: '26K', image: require('@/assets/images/hotbrew.jpg') },
-];
-
+// Mapping nama kopi ke gambar lokal
+const COFFEE_IMAGES: { [key: string]: any } = {
+  'Espresso': require('@/assets/images/espresso.jpg'),
+  'Latte': require('@/assets/images/latte.jpg'),
+  'Cappuccino': require('@/assets/images/cappuccino.jpg'),
+  'Iced Coffee': require('@/assets/images/icedcoffee.jpg'),
+  'Mocha': require('@/assets/images/mocha.jpg'),
+  'Americano': require('@/assets/images/americano.jpg'),
+  'Macchiato': require('@/assets/images/macchiato.jpg'),
+  'Flat White': require('@/assets/images/flatwhite.jpg'),
+  'Hot Brew': require('@/assets/images/hotbrew.jpg'),
+};
 
 export default function FavoritesScreen() {
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favoriteItems, setFavoriteItems] = useState<any[]>([]);
+  const userId = 'user1'; // Ganti sesuai user Supabase Auth
 
   useFocusEffect(
     useCallback(() => {
-      const loadFavorites = async () => {
-        try {
-          const stored = await AsyncStorage.getItem('favorites');
-          if (stored) setFavorites(JSON.parse(stored));
-        } catch (err) {
-          console.log('Error loading favorites:', err);
-        }
-      };
-      loadFavorites();
-    }, [])
+      if (userId) loadFavorites();
+    }, [userId])
   );
 
-  const favoriteItems = COFFEE_DATA.filter(item => favorites.includes(item.id));
+  const loadFavorites = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('favorites')
+        .select(`
+          coffee_id,
+          coffee (
+            id,
+            name,
+            price
+          )
+        `)
+        .eq('user_id', userId);
 
-  const renderItem = ({ item }: { item: (typeof COFFEE_DATA)[0] }) => (
+      if (error) throw error;
+
+      if (data) {
+        const items = data.map((item: any) => ({
+          id: item.coffee.id,
+          name: item.coffee.name,
+          price: item.coffee.price,
+          image: COFFEE_IMAGES[item.coffee.name] // ambil gambar lokal
+        }));
+        setFavoriteItems(items);
+      }
+    } catch (err) {
+      console.log('Error loading favorites:', err);
+    }
+  };
+
+  const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
       <Image source={item.image} style={styles.image} resizeMode="cover" />
       <ThemedText type="subtitle" style={styles.name}>{item.name}</ThemedText>
@@ -59,14 +80,13 @@ export default function FavoritesScreen() {
         <FlatList
           data={favoriteItems}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           numColumns={4}
           columnWrapperStyle={styles.row}
           contentContainerStyle={{ paddingBottom: 100 }}
         />
       )}
 
-      {/* Tombol di bagian bawah tengah */}
       <View style={styles.footerButtons}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
           <ThemedText style={styles.buttonText}>Kembali</ThemedText>
@@ -79,5 +99,3 @@ export default function FavoritesScreen() {
     </ThemedView>
   );
 }
-
-

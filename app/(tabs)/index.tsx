@@ -71,14 +71,33 @@ export default function HomeScreen() {
   const toggleFavorite = async (id: string) => {
     try {
       let updatedFavorites = [...favorites];
+
       if (updatedFavorites.includes(id)) {
         updatedFavorites = updatedFavorites.filter(fav => fav !== id);
+
+        // Hapus dari Supabase
+        await supabase
+          .from('favorites')
+          .delete()
+          .eq('user_id', 'user1')  // ganti sesuai user auth
+          .eq('coffee_id', id);
+
       } else {
         updatedFavorites.push(id);
         animateHeart();
+
+        // Tambahkan ke Supabase
+        await supabase
+          .from('favorites')
+          .insert({
+            user_id: 'user1', // ganti sesuai user auth
+            coffee_id: id,
+          });
       }
+
       setFavorites(updatedFavorites);
       await AsyncStorage.setItem('favorites', JSON.stringify(updatedFavorites));
+
     } catch (err) {
       console.log('Error saving favorites:', err);
     }
@@ -180,4 +199,3 @@ export default function HomeScreen() {
     </ThemedView>
   );
 }
-
