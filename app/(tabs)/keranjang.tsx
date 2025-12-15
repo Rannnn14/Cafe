@@ -1,199 +1,218 @@
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useCallback, useState, useEffect } from 'react';
 import {
-  Alert, Image,
-  ScrollView,
-  Text,
+  Alert,
+  FlatList,
   TouchableOpacity,
-  View
+  View,
+  Image,
 } from 'react-native';
-import { styles } from "../../components/styles/cart.styles";
+import { useFocusEffect } from '@react-navigation/native';
+
+const USER_ID = 'user1';
+
+// Map untuk gambar lokal
+const imageMap: Record<string, any> = {
+  'espresso.jpg': require('@/assets/images/espresso.jpg'),
+  'latte.jpg': require('@/assets/images/latte.jpg'),
+  'cappuccino.jpg': require('@/assets/images/cappuccino.jpg'),
+  'icedcoffee.jpg': require('@/assets/images/icedcoffee.jpg'),
+  'mocha.jpg': require('@/assets/images/mocha.jpg'),
+  'americano.jpg': require('@/assets/images/americano.jpg'),
+  'macchiato.jpg': require('@/assets/images/macchiato.jpg'),
+  'flatwhite.jpg': require('@/assets/images/flatwhite.jpg'),
+  'hotbrew.jpg': require('@/assets/images/hotbrew.jpg'),
+};
 
 interface CartItem {
   id: string;
+  product_id: string;
   name: string;
-  price: string;
-  image: any;
+  price: number;
   quantity: number;
-  checked?: boolean;
+  selected: boolean;
+  image: string; // simpan nama file
+  created_at: string;
 }
 
 export default function KeranjangScreen() {
-  const [cart, setCart] = useState<CartItem[]>([]); //Menyimpan daftar item di keranjang.
-  const [total, setTotal] = useState<number>(0); //Menyimpan jumlah harga dari item yang dicentang.
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
 
-  /** Load data keranjang */
-  // Saat halaman keranjang dibuka, data produk diambil dari AsyncStorage (penyimpanan lokal).
+  /** Load cart dari Supabase */
+  const loadCart = async () => {
+    const { data, error } = await supabase
+      .from('cart')
+      .select('*')
+      .eq('user_id', USER_ID)
+      .order('created_at', { ascending: false });
+
+    if (!error) setCart(data || []);
+  };
+
   useFocusEffect(
     useCallback(() => {
-      const loadCart = async () => {
-        try {
-          const stored = await AsyncStorage.getItem('cart');
-          if (stored) {
-            const parsed = JSON.parse(stored).map((item: CartItem) => ({
-              ...item,
-              checked: item.checked ?? false,
-            }));
-            setCart(parsed);
-          } else setCart([]);
-        } catch (err) {
-          console.log('Error loading cart:', err);
-        }
-      };
       loadCart();
     }, [])
   );
 
-  /** Hitung total berdasarkan item yang dicentang */
+  /** Hitung total */
   useEffect(() => {
-    const newTotal = cart.reduce((sum, item) => {
-      if (!item.checked) return sum;
-      const priceNumber = parseInt(item.price.replace('K', '')) * 1000;
-      return sum + priceNumber * item.quantity;
-    }, 0);
-    setTotal(newTotal);
+    const totalPrice = cart
+      .filter(item => item.selected)
+      .reduce((sum, item) => sum + item.price * item.quantity, 0);
+    setTotal(totalPrice);
   }, [cart]);
 
-  /** Simpan ke AsyncStorage */
-  const saveCart = async (newCart: CartItem[]) => {
-    setCart(newCart);
-    await AsyncStorage.setItem('cart', JSON.stringify(newCart));
+  /** Toggle select */
+  const toggleSelect = async (id: string, value: boolean) => {
+    await supabase.from('cart').update({ selected: value }).eq('id', id);
+    setCart(prev => prev.map(item => item.id === id ? { ...item, selected: value } : item));
   };
 
-  /** Aksi + dan - */
-  const increase = (id: string) => {
-    saveCart(
-      cart.map(item =>
-        item.id === id ? { ...item, quantity: item.quantity + 1 } : item
-      )
-    );
+  /** Update quantity */
+  const updateQty = async (id: string, qty: number) => {
+    if (qty < 1) return;
+    await supabase.from('cart').update({ quantity: qty }).eq('id', id);
+    setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: qty } : item));
   };
 
-  const decrease = (id: string) => {
-    saveCart(
-      cart.map(item =>
-        item.id === id ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item
-      )
-    );
+  /** Delete item */
+  const deleteItem = async (id: string) => {
+    await supabase.from('cart').delete().eq('id', id);
+    setCart(prev => prev.filter(item => item.id !== id));
   };
 
-  /** Hapus item */
-  const removeItem = async (id: string) => {
-    const newCart = cart.filter(item => item.id !== id);
-    await saveCart(newCart);
+  /** Checkout */
+  const checkout = async () => {
+    const selectedItems = cart.filter(item => item.selected);
+    if (selectedItems.length === 0) {
+      Alert.alert('Pilih produk dulu');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const orderRows = selectedItems.map(item => ({
+        user_id: USER_ID,
+        product_id: item.product_id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        created_at: new Date().toISOString(),
+      }));
+
+      // Masukkan ke orders
+      const { error: orderError } = await supabase.from('orders').insert(orderRows);
+      if (orderError) throw orderError;
+
+      // Hapus dari cart
+      const ids = selectedItems.map(i => i.id);
+      const { error: deleteError } = await supabase.from('cart').delete().in('id', ids);
+      if (deleteError) throw deleteError;
+
+      loadCart();
+      Alert.alert('Sukses', 'Checkout berhasil ☕');
+    } catch (err) {
+      console.log('Checkout error:', err);
+      Alert.alert('Checkout gagal');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  /** Toggle checkbox */
-  const toggleCheck = (id: string) => {
-    const updated = cart.map(item =>
-      item.id === id ? { ...item, checked: !item.checked } : item
-    );
-    saveCart(updated);
-  };
+  /** Render item */
+  const renderItem = ({ item }: { item: CartItem }) => (
+    <View style={{
+      flexDirection: 'row',
+      padding: 12,
+      marginVertical: 6,
+      marginHorizontal: 12,
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      shadowColor: '#000',
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 3,
+      alignItems: 'center',
+    }}>
+      {/* Checkbox */}
+      <TouchableOpacity onPress={() => toggleSelect(item.id, !item.selected)}>
+        <View style={{
+          width: 24,
+          height: 24,
+          borderRadius: 6,
+          borderWidth: 1,
+          borderColor: '#6f4e37',
+          backgroundColor: item.selected ? '#6f4e37' : 'transparent',
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: 12,
+        }}>
+          {item.selected && <ThemedText style={{ color: '#fff', fontSize: 16 }}>✓</ThemedText>}
+        </View>
+      </TouchableOpacity>
+
+      {/* Thumbnail */}
+      <Image source={imageMap[item.image]} style={{ width: 60, height: 60, borderRadius: 8, marginRight: 12 }} />
+
+      {/* Info */}
+      <View style={{ flex: 1 }}>
+        <ThemedText style={{ fontWeight: 'bold', fontSize: 16 }}>{item.name}</ThemedText>
+        <ThemedText style={{ color: '#6f4e37', marginVertical: 4 }}>Rp {item.price.toLocaleString('id-ID')}</ThemedText>
+
+        {/* Quantity + Hapus */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+          <TouchableOpacity onPress={() => updateQty(item.id, item.quantity - 1)} style={{ padding: 6 }}>
+            <ThemedText>➖</ThemedText>
+          </TouchableOpacity>
+          <ThemedText style={{ marginHorizontal: 12 }}>{item.quantity}</ThemedText>
+          <TouchableOpacity onPress={() => updateQty(item.id, item.quantity + 1)} style={{ padding: 6 }}>
+            <ThemedText>➕</ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => deleteItem(item.id)} style={{ marginLeft: 20 }}>
+            <ThemedText style={{ color: '#e63946', fontWeight: 'bold' }}>Hapus</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
 
   return (
-    <ThemedView style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <ThemedText style={styles.title}>MY CART</ThemedText>
-        <TouchableOpacity onPress={() => router.push('/')} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+    <ThemedView style={{ flex: 1, backgroundColor: '#f8f4f0' }}>
+      <FlatList
+        data={cart}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={{ paddingVertical: 12 }}
+      />
+
+      {/* Total & Checkout */}
+      <View style={{
+        padding: 16,
+        borderTopWidth: 1,
+        borderColor: '#ddd',
+        backgroundColor: '#fff',
+      }}>
+        <ThemedText style={{ fontSize: 18, fontWeight: 'bold' }}>Total: Rp {total.toLocaleString('id-ID')}</ThemedText>
+        <TouchableOpacity
+          onPress={checkout}
+          disabled={loading}
+          style={{
+            backgroundColor: '#6f4e37',
+            padding: 14,
+            borderRadius: 12,
+            marginTop: 10,
+          }}
+        >
+          <ThemedText style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>Checkout</ThemedText>
         </TouchableOpacity>
       </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {cart.length === 0 ? (
-          <ThemedText style={styles.emptyText}>Keranjang Kosong</ThemedText>
-        ) : (
-          cart.map(item => {
-            const priceNumber = parseInt(item.price.replace('K', '')) * 1000;
-            const subtotal = priceNumber * item.quantity;
-
-            return (
-              <View key={item.id} style={styles.card}>
-                {/* Checkbox */}
-                <TouchableOpacity onPress={() => toggleCheck(item.id)} style={styles.checkbox}>
-                  <Ionicons
-                    name={item.checked ? 'checkbox' : 'square-outline'}
-                    size={22}
-                    color={item.checked ? '#4b2e05' : '#aaa'}
-                  />
-                </TouchableOpacity>
-
-                {/* Gambar & Info */}
-                <Image source={item.image} style={styles.image} resizeMode="cover" />
-                <View style={{ flex: 1 }}>
-                  <View style={styles.rowBetween}>
-                    <ThemedText style={styles.name}>{item.name}</ThemedText>
-                    <ThemedText style={styles.subtotalText}>
-                      Rp {subtotal.toLocaleString('id-ID')}
-                    </ThemedText>
-                  </View>
-
-                  <View style={styles.quantityRow}>
-                    <TouchableOpacity style={styles.btn} onPress={() => decrease(item.id)}>
-                      <Text style={styles.btnText}>−</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.qty}>{item.quantity}</Text>
-                    <TouchableOpacity style={styles.btn} onPress={() => increase(item.id)}>
-                      <Text style={styles.btnText}>+</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={() => removeItem(item.id)}>
-                      <Text style={styles.removeText}>Hapus</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            );
-          })
-        )}
-
-        {/* Total & Checkout */}
-        {cart.length > 0 && (
-          <>
-            <View style={styles.totalRow}>
-              <ThemedText style={styles.totalLabel}>Total</ThemedText>
-              <ThemedText style={styles.totalValue}>
-                Rp {total.toLocaleString('id-ID')}
-              </ThemedText>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.checkoutButton, { opacity: total === 0 ? 0.5 : 1 }]}
-              disabled={total === 0}
-              onPress={() => {
-                if (total === 0) return;
-                Alert.alert(
-                  "Konfirmasi Checkout",
-                  "Kesuwun uis Tuku ning Coffe Shop",
-                  [
-                    {
-                      text: "Batal",
-                      style: "cancel"
-                    },
-                    {
-                      text: "Sama-sama",
-                      onPress: () => {
-                        console.log('Checkout:', cart.filter(c => c.checked));
-                        // di sini nanti kamu bisa arahkan ke halaman pembayaran, misalnya:
-                        // navigation.navigate("Pembayaran");
-                      }
-                    }
-                  ]
-                );
-              }}
-            >
-              <Text style={styles.checkoutText}>Checkout Sekarang</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </ScrollView>
     </ThemedView>
   );
 }

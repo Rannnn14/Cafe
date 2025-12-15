@@ -2,7 +2,6 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/lib/supabase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -12,54 +11,35 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
-import { styles } from "../../components/styles/index.styles";
+import { styles } from '../../components/styles/index.styles';
 
 interface CoffeeItem {
   id: string;
   name: string;
-  price: string;
+  price: number; // ⬅️ NUMBER
   image: any;
 }
 
-interface CartItem extends CoffeeItem {
-  quantity: number;
-}
+const USER_ID = 'user1';
 
 const COFFEE_DATA: CoffeeItem[] = [
-  { id: '1', name: 'Espresso', price: '25K', image: require('@/assets/images/espresso.jpg') },
-  { id: '2', name: 'Latte', price: '28K', image: require('@/assets/images/latte.jpg') },
-  { id: '3', name: 'Cappuccino', price: '30K', image: require('@/assets/images/cappuccino.jpg') },
-  { id: '4', name: 'Iced Coffee', price: '27K', image: require('@/assets/images/icedcoffee.jpg') },
-  { id: '5', name: 'Mocha', price: '32K', image: require('@/assets/images/mocha.jpg') },
-  { id: '6', name: 'Americano', price: '24K', image: require('@/assets/images/americano.jpg') },
-  { id: '7', name: 'Macchiato', price: '29K', image: require('@/assets/images/macchiato.jpg') },
-  { id: '8', name: 'Flat White', price: '31K', image: require('@/assets/images/flatwhite.jpg') },
-  { id: '9', name: 'Hot Brew', price: '26K', image: require('@/assets/images/hotbrew.jpg') },
+  { id: '1', name: 'Espresso', price: 25000, image: require('@/assets/images/espresso.jpg') },
+  { id: '2', name: 'Latte', price: 28000, image: require('@/assets/images/latte.jpg') },
+  { id: '3', name: 'Cappuccino', price: 30000, image: require('@/assets/images/cappuccino.jpg') },
+  { id: '4', name: 'Iced Coffee', price: 27000, image: require('@/assets/images/icedcoffee.jpg') },
+  { id: '5', name: 'Mocha', price: 32000, image: require('@/assets/images/mocha.jpg') },
+  { id: '6', name: 'Americano', price: 24000, image: require('@/assets/images/americano.jpg') },
+  { id: '7', name: 'Macchiato', price: 29000, image: require('@/assets/images/macchiato.jpg') },
+  { id: '8', name: 'Flat White', price: 31000, image: require('@/assets/images/flatwhite.jpg') },
+  { id: '9', name: 'Hot Brew', price: 26000, image: require('@/assets/images/hotbrew.jpg') },
 ];
 
 export default function HomeScreen() {
-  const [search, setSearch] = useState<string>('');
+  const [search, setSearch] = useState('');
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [cartCount, setCartCount] = useState<number>(0);
   const heartScale = useRef(new Animated.Value(1)).current;
-
-  // Load favorites & cart
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const storedFav = await AsyncStorage.getItem('favorites');
-        if (storedFav) setFavorites(JSON.parse(storedFav));
-
-        const storedCart = await AsyncStorage.getItem('cart');
-        if (storedCart) setCartCount(JSON.parse(storedCart).length);
-      } catch (err) {
-        console.log('Error loading data:', err);
-      }
-    };
-    loadData();
-  }, []);
 
   const animateHeart = () => {
     Animated.sequence([
@@ -69,66 +49,52 @@ export default function HomeScreen() {
   };
 
   const toggleFavorite = async (id: string) => {
-    try {
-      let updatedFavorites = [...favorites];
+    let updated = [...favorites];
 
-      if (updatedFavorites.includes(id)) {
-        updatedFavorites = updatedFavorites.filter(fav => fav !== id);
-
-        // Hapus dari Supabase
-        await supabase
-          .from('favorites')
-          .delete()
-          .eq('user_id', 'user1')  // ganti sesuai user auth
-          .eq('coffee_id', id);
-
-      } else {
-        updatedFavorites.push(id);
-        animateHeart();
-
-        // Tambahkan ke Supabase
-        await supabase
-          .from('favorites')
-          .insert({
-            user_id: 'user1', // ganti sesuai user auth
-            coffee_id: id,
-          });
-      }
-
-      setFavorites(updatedFavorites);
-      await AsyncStorage.setItem('favorites', JSON.stringify(updatedFavorites));
-
-    } catch (err) {
-      console.log('Error saving favorites:', err);
+    if (updated.includes(id)) {
+      updated = updated.filter(f => f !== id);
+      await supabase.from('favorites').delete().eq('user_id', USER_ID).eq('coffee_id', id);
+    } else {
+      updated.push(id);
+      animateHeart();
+      await supabase.from('favorites').insert({
+        user_id: USER_ID,
+        coffee_id: id,
+      });
     }
+
+    setFavorites(updated);
   };
 
+  /** 🔥 ADD TO CART YANG BENAR */
   const addToCart = async (item: CoffeeItem) => {
     try {
-      // SIMPAN KE SUPABASE
-      await supabase.from('orders').insert({
-        product_id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: 1,
-      });
+      const { data: existing } = await supabase
+        .from('cart')
+        .select('*')
+        .eq('user_id', USER_ID)
+        .eq('product_id', item.id)
+        .single();
 
-      // LOGIC LAMA (AsyncStorage) TETAP
-      const stored = await AsyncStorage.getItem('cart');
-      let currentCart: CartItem[] = stored ? JSON.parse(stored) : [];
-
-      const index = currentCart.findIndex(ci => ci.id === item.id);
-      if (index >= 0) {
-        currentCart[index].quantity += 1;
+      if (existing) {
+        await supabase
+          .from('cart')
+          .update({ quantity: existing.quantity + 1 })
+          .eq('id', existing.id);
       } else {
-        currentCart.push({ ...item, quantity: 1 });
+        await supabase.from('cart').insert({
+          user_id: USER_ID,
+          product_id: item.id,
+          name: item.name,
+          price: item.price, // NUMBER
+          quantity: 1,
+          selected: false,
+        });
       }
 
-      await AsyncStorage.setItem('cart', JSON.stringify(currentCart));
-      setCartCount(currentCart.length);
-      Alert.alert('☕ Added', `${item.name} added to cart!`);
+      Alert.alert('Berhasil', `${item.name} masuk keranjang ☕`);
     } catch (err) {
-      console.log('Error adding to cart:', err);
+      console.log('ADD CART ERROR:', err);
     }
   };
 
@@ -141,7 +107,7 @@ export default function HomeScreen() {
 
     return (
       <View style={styles.card}>
-        <Image source={item.image} style={styles.image} resizeMode="cover" />
+        <Image source={item.image} style={styles.image} />
 
         <TouchableOpacity style={styles.heartBtn} onPress={() => toggleFavorite(item.id)}>
           <Animated.View style={{ transform: [{ scale: heartScale }] }}>
@@ -155,11 +121,13 @@ export default function HomeScreen() {
 
         <View style={styles.infoContainer}>
           <ThemedText style={styles.name}>{item.name}</ThemedText>
-          <ThemedText style={styles.price}>{item.price}</ThemedText>
+          <ThemedText style={styles.price}>
+            Rp {item.price.toLocaleString('id-ID')}
+          </ThemedText>
         </View>
 
         <TouchableOpacity style={styles.cartBtn} onPress={() => addToCart(item)}>
-          <ThemedText style={styles.cartBtnText}> Add to Cart</ThemedText>
+          <ThemedText style={styles.cartBtnText}>Add to Cart</ThemedText>
         </TouchableOpacity>
       </View>
     );
@@ -168,32 +136,26 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.headerContainer}>
-          <Image source={require('@/assets/images/ini.png')} style={styles.headerImage} />
           <ThemedText type="title" style={styles.headerText}>
             Welcome to Cozy Coffee ☕
           </ThemedText>
         </View>
 
-        {/* Search */}
         <TextInput
           style={styles.searchBar}
-          placeholder="Search your favorite coffee..."
-          placeholderTextColor="#999"
+          placeholder="Search coffee..."
           value={search}
           onChangeText={setSearch}
         />
 
-        {/* List */}
         <FlatList
           data={filteredCoffee}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           numColumns={4}
           columnWrapperStyle={styles.row}
           scrollEnabled={false}
-          contentContainerStyle={{ paddingBottom: 40 }}
         />
       </ScrollView>
     </ThemedView>
