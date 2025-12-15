@@ -1,37 +1,88 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { styles } from "./../components/styles/edit-profil.styles";
-import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { styles } from "../components/styles/edit-profil.styles";
+import { supabase } from "../lib/supabase";
 
 export default function EditProfilScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [bio, setBio] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [profileId, setProfileId] = useState<string | null>(null);
 
+  // ===============================
+  // LOAD PROFILE
+  // ===============================
   useEffect(() => {
-    // Ambil data dari penyimpanan saat halaman dibuka
     const loadProfile = async () => {
-      const savedName = await AsyncStorage.getItem("user_name");
-      const savedEmail = await AsyncStorage.getItem("user_email");
-      const savedBio = await AsyncStorage.getItem("user_bio");
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, bio")
+        .limit(1)
+        .single();
 
-      if (savedName) setName(savedName);
-      if (savedEmail) setEmail(savedEmail);
-      if (savedBio) setBio(savedBio);
+      if (error || !data) return;
+
+      setProfileId(data.id);
+      setName(data.full_name || "");
+      setEmail(data.email || "");
+      setBio(data.bio || "");
     };
+
     loadProfile();
   }, []);
 
+  // ===============================
+  // SAVE PROFILE
+  // ===============================
   const handleSave = async () => {
+    if (!name || !email) {
+      Alert.alert("Validasi", "Nama dan email wajib diisi");
+      return;
+    }
+
     try {
-      await AsyncStorage.setItem("user_name", name);
-      await AsyncStorage.setItem("user_email", email);
-      await AsyncStorage.setItem("user_bio", bio);
-      Alert.alert("Profil Disimpan", "Perubahan profil kamu berhasil disimpan!");
-      router.back(); // kembali ke halaman profil
-    } catch (error) {
-      Alert.alert("Gagal", "Terjadi kesalahan saat menyimpan profil!");
+      setLoading(true);
+
+      let error;
+
+      if (profileId) {
+        // UPDATE
+        ({ error } = await supabase
+          .from("profiles")
+          .update({
+            full_name: name,
+            email: email,
+            bio: bio,
+            updated_at: new Date(),
+          })
+          .eq("id", profileId));
+      } else {
+        // INSERT
+        ({ error } = await supabase.from("profiles").insert({
+          full_name: name,
+          email: email,
+          bio: bio,
+        }));
+      }
+
+      if (error) throw error;
+
+      Alert.alert("Berhasil", "Profil berhasil disimpan");
+      router.back();
+    } catch (err) {
+      console.log("SAVE ERROR:", err);
+      Alert.alert("Gagal", "Gagal menyimpan profil");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -45,7 +96,6 @@ export default function EditProfilScreen() {
           style={styles.input}
           value={name}
           onChangeText={setName}
-          placeholder="Masukkan nama lengkap"
         />
       </View>
 
@@ -55,7 +105,6 @@ export default function EditProfilScreen() {
           style={styles.input}
           value={email}
           onChangeText={setEmail}
-          placeholder="Masukkan email"
           keyboardType="email-address"
         />
       </View>
@@ -66,13 +115,18 @@ export default function EditProfilScreen() {
           style={[styles.input, { height: 100 }]}
           value={bio}
           onChangeText={setBio}
-          placeholder="Tulis sesuatu tentang kamu..."
           multiline
         />
       </View>
 
-      <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-        <Text style={styles.saveText}>Simpan Perubahan</Text>
+      <TouchableOpacity
+        style={[styles.saveBtn, loading && { opacity: 0.6 }]}
+        onPress={handleSave}
+        disabled={loading}
+      >
+        <Text style={styles.saveText}>
+          {loading ? "Menyimpan..." : "Simpan Perubahan"}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
@@ -81,5 +135,3 @@ export default function EditProfilScreen() {
     </ScrollView>
   );
 }
-
-
