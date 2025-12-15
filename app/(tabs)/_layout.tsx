@@ -2,11 +2,11 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons'; // ✅ Tambahkan Ionicons
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Tabs, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // ✅ Tambahkan Ionicons
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -80,7 +80,7 @@ export default function TabLayout() {
           headerLeft: () => (
             <TouchableOpacity
               style={{ marginLeft: 12 }}
-              onPress={() => router.push('./(tabs)/index')}
+              onPress={() => router.push('/')}
             >
               <Ionicons name="arrow-back" size={24} color="#4b2e05" />
             </TouchableOpacity>
@@ -100,7 +100,7 @@ export default function TabLayout() {
           headerLeft: () => (
             <TouchableOpacity
               style={{ marginLeft: 12 }}
-              onPress={() => router.push('./(tabs)/index')}
+              onPress={() => router.push('/')}
             >
               <Ionicons name="arrow-back" size={24} color="#4b2e05" />
             </TouchableOpacity>
@@ -124,7 +124,7 @@ export default function TabLayout() {
           headerLeft: () => (
             <TouchableOpacity
               style={{ marginLeft: 12 }}
-              onPress={() => router.push('./(tabs)/index')}
+              onPress={() => router.push('/')}
             >
               <Ionicons name="arrow-back" size={24} color="#4b2e05" />
             </TouchableOpacity>
@@ -145,7 +145,7 @@ export default function TabLayout() {
           headerLeft: () => (
             <TouchableOpacity
               style={{ marginLeft: 12 }}
-              onPress={() => router.push('./(tabs)/index')}
+              onPress={() => router.push('/')}
             >
               <Ionicons name="arrow-back" size={24} color="#4b2e05" />
             </TouchableOpacity>
