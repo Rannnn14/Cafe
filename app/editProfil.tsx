@@ -1,137 +1,159 @@
+import { supabase } from "@/lib/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import React, { useEffect, useState } from "react";
-import {
-  Alert,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+
+// ✅ sesuaikan kalau nama file styles kamu beda
 import { styles } from "../components/styles/edit-profil.styles";
-import { supabase } from "../lib/supabase";
 
 export default function EditProfilScreen() {
-  const [name, setName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [bio, setBio] = useState("");
+  const [phone, setPhone] = useState(""); // ✅ baru
+  const [bio, setBio] = useState("");     // ✅ baru
   const [loading, setLoading] = useState(false);
-  const [profileId, setProfileId] = useState<string | null>(null);
 
-  // ===============================
-  // LOAD PROFILE
-  // ===============================
-  useEffect(() => {
-    const loadProfile = async () => {
-      const { data, error } = await supabase
+  const loadProfile = async () => {
+    try {
+      // ✅ Supabase v1
+      const user = supabase.auth.user();
+      if (!user) {
+        Alert.alert("Kamu belum login");
+        router.replace("/(tabs)/profil" as any);
+        return;
+      }
+
+      // email dari auth (biar selalu sesuai login)
+      const authEmail = user.email ?? "";
+      setEmail(authEmail);
+
+      const { data: profile, error } = await supabase
         .from("profiles")
-        .select("id, full_name, email, bio")
-        .limit(1)
+        .select("full_name, email, phone, bio")
+        .eq("id", user.id)
         .single();
 
-      if (error || !data) return;
+      // Kalau belum ada row profile, biarin kosong (nanti upsert pas save)
+      if (error) {
+        setFullName(authEmail ? authEmail.split("@")[0] : "");
+        setPhone("");
+        setBio("");
+        return;
+      }
 
-      setProfileId(data.id);
-      setName(data.full_name || "");
-      setEmail(data.email || "");
-      setBio(data.bio || "");
-    };
+      setFullName(profile?.full_name ?? (authEmail ? authEmail.split("@")[0] : ""));
+      setEmail(profile?.email ?? authEmail);
 
+      // ✅ default kosong kalau null
+      setPhone(profile?.phone ?? "");
+      setBio(profile?.bio ?? "");
+    } catch (err) {
+      console.log("loadProfile error:", err);
+    }
+  };
+
+  useEffect(() => {
     loadProfile();
   }, []);
 
-  // ===============================
-  // SAVE PROFILE
-  // ===============================
   const handleSave = async () => {
-    if (!name || !email) {
-      Alert.alert("Validasi", "Nama dan email wajib diisi");
-      return;
-    }
-
     try {
+      const user = supabase.auth.user();
+      if (!user) {
+        Alert.alert("Kamu belum login");
+        return;
+      }
+
       setLoading(true);
 
-      let error;
-
-      if (profileId) {
-        // UPDATE
-        ({ error } = await supabase
-          .from("profiles")
-          .update({
-            full_name: name,
-            email: email,
-            bio: bio,
-            updated_at: new Date(),
-          })
-          .eq("id", profileId));
-      } else {
-        // INSERT
-        ({ error } = await supabase.from("profiles").insert({
-          full_name: name,
-          email: email,
-          bio: bio,
-        }));
-      }
+      // ✅ upsert biar aman kalau row profiles belum ada
+      const { error } = await supabase
+        .from("profiles")
+        .upsert(
+          {
+            id: user.id,
+            full_name: fullName.trim(),
+            email: email.trim(),
+            phone: phone.trim(), // ✅ baru
+            bio: bio.trim(),     // ✅ baru
+          },
+          { onConflict: "id" }
+        );
 
       if (error) throw error;
 
-      Alert.alert("Berhasil", "Profil berhasil disimpan");
-      router.back();
-    } catch (err) {
-      console.log("SAVE ERROR:", err);
-      Alert.alert("Gagal", "Gagal menyimpan profil");
+      // cache biar profile screen cepet kebaca
+      await AsyncStorage.setItem("user_name", fullName.trim());
+      await AsyncStorage.setItem("user_email", email.trim());
+
+      Alert.alert("Sukses", "Profil berhasil diperbarui");
+      router.back(); // balik ke profile
+    } catch (err: any) {
+      console.log("save profile error:", err);
+      Alert.alert("Gagal", err?.message ?? "Gagal update profil");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Edit Profil</Text>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.title}>Edit Profil</Text>
 
-      <View style={styles.formGroup}>
         <Text style={styles.label}>Nama Lengkap</Text>
         <TextInput
           style={styles.input}
-          value={name}
-          onChangeText={setName}
+          placeholder="Nama kamu"
+          value={fullName}
+          onChangeText={setFullName}
         />
-      </View>
 
-      <View style={styles.formGroup}>
         <Text style={styles.label}>Email</Text>
         <TextInput
           style={styles.input}
+          placeholder="Email"
           value={email}
           onChangeText={setEmail}
+          autoCapitalize="none"
           keyboardType="email-address"
         />
-      </View>
 
-      <View style={styles.formGroup}>
+        {/* ✅ Nomor Telepon */}
+        <Text style={styles.label}>Nomor Telepon</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="08xxxxxxxxxx"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+        />
+
+        {/* ✅ Bio */}
         <Text style={styles.label}>Bio</Text>
         <TextInput
-          style={[styles.input, { height: 100 }]}
+          style={[styles.input, { height: 120, textAlignVertical: "top" }]}
+          placeholder="Tulis bio kamu..."
           value={bio}
           onChangeText={setBio}
           multiline
         />
-      </View>
 
-      <TouchableOpacity
-        style={[styles.saveBtn, loading && { opacity: 0.6 }]}
-        onPress={handleSave}
-        disabled={loading}
-      >
-        <Text style={styles.saveText}>
-          {loading ? "Menyimpan..." : "Simpan Perubahan"}
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.saveBtn, loading && { opacity: 0.6 }]}
+          onPress={handleSave}
+          disabled={loading}
+        >
+          <Text style={styles.saveText}>
+            {loading ? "Menyimpan..." : "Simpan Perubahan"}
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
-        <Text style={styles.cancelText}>Batal</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.cancelText}>Batal</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 }

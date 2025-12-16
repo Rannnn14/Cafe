@@ -24,17 +24,38 @@ function InitialLayout() {
   useEffect(() => {
     if (loading) return;
 
-    const inTabsGroup = segments[0] === "(tabs)";
-    const inAuthGroup = (segments[0] as string) === "(auth)";
+    const first = (segments?.[0] as string) ?? "";
+    const inTabsGroup = first === "(tabs)";
+    const inAuthGroup = first === "(auth)";
 
-    console.log("AuthState changed", { session: !!session, inTabsGroup, inAuthGroup });
+    // ✅ Route yang boleh diakses saat SUDAH login, walau bukan tabs
+    const allowedAuthed = new Set([
+      "(tabs)",
+      "editProfil",
+      "checkout",
+      "orderHistory",
+      "deliveryAddresses",
+      "modal",
+    ]);
 
-    if (session && !inTabsGroup) {
-      // Redirect to the home tab if signed in
+    const inAllowedAuthedRoute = allowedAuthed.has(first);
+
+    // ✅ Kalau sudah login tapi lagi di auth pages -> lempar ke tabs
+    if (session && inAuthGroup) {
       router.replace("/(tabs)");
-    } else if (!session && !inAuthGroup) {
-      // Redirect to the sign-in page if not signed in
+      return;
+    }
+
+    // ✅ Kalau sudah login, tapi masuk route aneh (bukan tabs & bukan allowed) -> lempar ke tabs
+    if (session && !inAllowedAuthedRoute) {
+      router.replace("/(tabs)");
+      return;
+    }
+
+    // ✅ Kalau belum login dan bukan di auth -> lempar ke sign in
+    if (!session && !inAuthGroup) {
       router.replace("/(auth)/sign-in" as any);
+      return;
     }
   }, [session, loading, segments]);
 
@@ -47,9 +68,19 @@ function InitialLayout() {
   }
 
   return (
-    <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Groups */}
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="(auth)" />
+
+      {/* ✅ Screens di luar tabs yang kamu butuhin */}
+      <Stack.Screen name="editProfil" />
+      <Stack.Screen name="checkout" />
+      <Stack.Screen name="orderHistory" />
+      <Stack.Screen name="deliveryAddresses" />
+      
+
+      {/* modal */}
       <Stack.Screen
         name="modal"
         options={{ presentation: "modal", title: "Modal" }}

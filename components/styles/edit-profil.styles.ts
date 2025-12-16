@@ -1,17 +1,19 @@
 import { StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
-  container: {
+   container: {
     flexGrow: 1,
-    backgroundColor: "#F6EFE8",
+    backgroundColor: "#f8f4f0",
+    padding: 20,
+  },
+  scroll: {
     padding: 20,
   },
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#3B2F2F",
-    textAlign: "center",
     marginBottom: 20,
   },
+
   formGroup: {
     marginBottom: 15,
   },

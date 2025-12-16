@@ -1,78 +1,87 @@
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCallback, useState } from 'react';
-import { Image, ScrollView, View } from 'react-native';
+import { supabase } from "@/lib/supabase";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import { FlatList, Text, TouchableOpacity, View } from "react-native";
 
-interface OrderItem {
+const USER_ID = "user1";
+
+type OrderRow = {
   id: string;
-  name: string;
-  price: string;
-  image: any;
+  name: string | null;
+  price: number;
   quantity: number;
-  date: string;
-  total: number;
-}
+  created_at: string;
+  order_code: string | null;
+};
 
 export default function OrderHistoryScreen() {
-  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Ambil data dari AsyncStorage tiap kali halaman difokuskan
-  useFocusEffect(
-    useCallback(() => {
-      const loadOrders = async () => {
-        try {
-          const stored = await AsyncStorage.getItem('orderHistory');
-          if (stored) setOrders(JSON.parse(stored));
-          else setOrders([]);
-        } catch (err) {
-          console.log('Error loading order history:', err);
-        }
-      };
-      loadOrders();
-    }, [])
-  );
+  const loadOrders = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id,name,price,quantity,created_at,order_code")
+      .eq("user_id", USER_ID)
+      .order("created_at", { ascending: false });
+
+    if (!error) setOrders((data as OrderRow[]) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
 
   return (
-    <ThemedView style={{ flex: 1, backgroundColor: '#fefefe', paddingHorizontal: 16, paddingTop: 40 }}>
-      {/* HEADER */}
-      
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {orders.length === 0 ? (
-          <ThemedText style={{ textAlign: 'center', marginTop: 100, fontSize: 16, color: '#777' }}>
-            Belum ada riwayat pesanan.
-          </ThemedText>
-        ) : (
-          orders.map((item, index) => (
-            <View
-              key={`${item.id}-${index}`}
-              style={{
-                flexDirection: 'row',
-                backgroundColor: '#fff',
-                borderRadius: 12,
-                padding: 12,
-                marginBottom: 12,
-                elevation: 2,
-              }}
-            >
-              <Image source={item.image} style={{ width: 70, height: 70, borderRadius: 10, marginRight: 10 }} />
-              <View style={{ flex: 1 }}>
-                <ThemedText style={{ fontWeight: '600', fontSize: 16 }}>{item.name}</ThemedText>
-                <ThemedText style={{ fontSize: 14, color: '#555' }}>
-                  Jumlah: {item.quantity}
-                </ThemedText>
-                <ThemedText style={{ fontSize: 14, color: '#555' }}>
-                  Total: Rp {item.total.toLocaleString('id-ID')}
-                </ThemedText>
-                <ThemedText style={{ fontSize: 13, color: '#999', marginTop: 4 }}>
-                  {item.date}
-                </ThemedText>
-              </View>
-            </View>
-          ))
+    <View style={{ flex: 1, backgroundColor: "#f8f4f0" }}>
+      {/* HEADER model: ← Profile / History */}
+      <View style={{ padding: 16, flexDirection: "row", alignItems: "center" }}>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginRight: 10 }}>
+          <Ionicons name="arrow-back" size={22} color="#4b2e05" />
+        </TouchableOpacity>
+        <Text style={{ fontSize: 18, fontWeight: "800", color: "#4b2e05" }}>
+          Order History
+        </Text>
+      </View>
+
+      <FlatList
+        data={orders}
+        keyExtractor={(i) => i.id}
+        refreshing={loading}
+        onRefresh={loadOrders}
+        contentContainerStyle={{ padding: 16, paddingBottom: 30 }}
+        renderItem={({ item }) => (
+          <View
+            style={{
+              backgroundColor: "#fff",
+              borderRadius: 12,
+              padding: 14,
+              marginBottom: 12,
+            }}
+          >
+            <Text style={{ fontWeight: "800", fontSize: 16 }}>
+              {item.name ?? "Menu"}
+            </Text>
+
+            <Text style={{ marginTop: 4 }}>
+              Qty: {item.quantity} • Rp {(item.price * item.quantity).toLocaleString("id-ID")}
+            </Text>
+
+            {item.order_code ? (
+              <Text style={{ marginTop: 4, color: "#666" }}>
+                Order: {item.order_code}
+              </Text>
+            ) : null}
+
+            <Text style={{ marginTop: 4, color: "#666" }}>
+              {new Date(item.created_at).toLocaleString("id-ID")}
+            </Text>
+          </View>
         )}
-      </ScrollView>
-    </ThemedView>
+      />
+    </View>
   );
 }
