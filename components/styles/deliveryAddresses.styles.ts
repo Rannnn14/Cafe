@@ -1,60 +1,146 @@
 import { StyleSheet } from "react-native";
+
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5EDE3",
-    padding: 20,
+    backgroundColor: "#f8f4f0",
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#3B302A",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  addressItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 15,
-    marginVertical: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  iconContainer: {
-    width: 35,
-    alignItems: "center",
-  },
-  addressText: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#3B302A",
-  },
-  detail: {
-    fontSize: 12,
-    color: "#7D6B5D",
-  },
-  addButton: {
-    backgroundColor: "#C36A2D",
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 15,
-  },
-  addText: {
-    color: "white",
-    fontSize: 15,
-    fontWeight: "600",
-    marginLeft: 6,
-  },
+simpleHeader: {
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  backgroundColor: "#fff",
+},
+
+simpleBack: {
+  flexDirection: "row",
+  alignItems: "center",
+},
+
+simpleTitle: {
+  fontSize: 18,
+  fontWeight: "700",
+  marginLeft: 8,
+  color: "#4b2e05",
+},
+
+card: {
+  backgroundColor: "#fff",
+  borderRadius: 14,
+  padding: 14,
+  marginTop: 12,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+},
+
+cardActive: {
+  borderWidth: 1.5,
+  borderColor: "#C36A2D",
+},
+
+cardLeft: {
+  flexDirection: "row",
+  alignItems: "center",
+  flex: 1,
+},
+
+cardTitle: {
+  fontWeight: "800",
+  fontSize: 15,
+  color: "#333",
+},
+
+cardSub: {
+  marginTop: 2,
+  color: "#777",
+  fontSize: 12,
+},
+
+checkCircle: {
+  width: 22,
+  height: 22,
+  borderRadius: 11,
+  backgroundColor: "#C36A2D",
+  justifyContent: "center",
+  alignItems: "center",
+},
+
+checkCircleOff: {
+  width: 22,
+  height: 22,
+  borderRadius: 11,
+  borderWidth: 1,
+  borderColor: "#ddd",
+},
+
+overlay: {
+  flex: 1,
+  backgroundColor: "rgba(0,0,0,0.45)",
+  justifyContent: "center",
+  padding: 20,
+},
+
+modalBox: {
+  backgroundColor: "#fff",
+  borderRadius: 16,
+  padding: 16,
+},
+
+modalTitle: {
+  fontSize: 18,
+  fontWeight: "800",
+  marginBottom: 12,
+  color: "#4b2e05",
+},
+
+label: {
+  fontSize: 12,
+  fontWeight: "700",
+  marginTop: 10,
+  marginBottom: 6,
+  color: "#4b2e05",
+},
+
+input: {
+  borderWidth: 1,
+  borderColor: "#eee",
+  borderRadius: 12,
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  backgroundColor: "#fafafa",
+},
+
+primaryBtn: {
+  backgroundColor: "#111",
+  borderRadius: 12,
+  paddingVertical: 12,
+  marginTop: 14,
+  alignItems: "center",
+},
+
+primaryBtnText: {
+  color: "#fff",
+  fontWeight: "800",
+},
+
+secondaryBtn: {
+  borderWidth: 1,
+  borderColor: "#ddd",
+  borderRadius: 12,
+  paddingVertical: 12,
+  marginTop: 10,
+  alignItems: "center",
+},
+
+secondaryBtnText: {
+  color: "#333",
+  fontWeight: "800",
+},
+
+cancelText: {
+  textAlign: "center",
+  color: "#e63946",
+  fontWeight: "700",
+  marginTop: 12,
+},
 });
